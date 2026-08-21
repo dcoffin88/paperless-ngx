@@ -607,6 +607,12 @@ table.table {
   color: var(--bs-body-color);
 }
 
+.pdf-flipbook-lightbox .modal-content {
+  background: #2f2d2f;
+  border: 0;
+  height: 100%;
+}
+
 // Tighten horizontal spacing in modals on small viewports
 @media (max-width: 575.98px) {
   .modal {

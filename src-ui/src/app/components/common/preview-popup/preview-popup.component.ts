@@ -7,16 +7,21 @@ import {
   signal,
   ViewChild,
 } from '@angular/core'
-import { NgbPopover, NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap'
+import {
+  NgbModal,
+  NgbPopover,
+  NgbPopoverModule,
+} from '@ng-bootstrap/ng-bootstrap'
 import { Options } from '@popperjs/core'
 import { NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { first, Subject, takeUntil } from 'rxjs'
-import { Document } from 'src/app/data/document'
+import { Document as PaperlessDocument } from 'src/app/data/document'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import { DocumentTitlePipe } from 'src/app/pipes/document-title.pipe'
 import { SafeUrlPipe } from 'src/app/pipes/safeurl.pipe'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { SettingsService } from 'src/app/services/settings.service'
+import { PdfFlipbookDialogComponent } from '../pdf-flipbook-viewer/pdf-flipbook-dialog.component'
 import { PngxPdfViewerComponent } from '../pdf-viewer/pdf-viewer.component'
 import { PdfRenderMode } from '../pdf-viewer/pdf-viewer.types'
 
@@ -37,15 +42,16 @@ export class PreviewPopupComponent implements OnDestroy {
   private settingsService = inject(SettingsService)
   public readonly documentService = inject(DocumentService)
   private http = inject(HttpClient)
+  private modalService = inject(NgbModal)
 
-  private _document: Document
+  private _document: PaperlessDocument
   @Input()
-  set document(document: Document) {
+  set document(document: PaperlessDocument) {
     this._document = document
     this.init()
   }
 
-  get document(): Document {
+  get document(): PaperlessDocument {
     return this._document
   }
 
@@ -88,8 +94,20 @@ export class PreviewPopupComponent implements OnDestroy {
     return this.documentService.getPreviewUrl(this.document.id)
   }
 
+  get previewLink(): string {
+    return this.previewUrl
+  }
+
   get useNativePdfViewer(): boolean {
     return this.settingsService.get(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER)
+  }
+
+  get usePdfFlipbookViewer(): boolean {
+    return (
+      this.isPdf &&
+      !this.useNativePdfViewer &&
+      this.settingsService.get(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER)
+    )
   }
 
   get isPdf(): boolean {
@@ -125,6 +143,21 @@ export class PreviewPopupComponent implements OnDestroy {
     } else {
       this.error.set(true)
     }
+  }
+
+  openPreview(event: MouseEvent): void {
+    if (!this.usePdfFlipbookViewer || this.link) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    this.popover?.close(true)
+
+    const modal = this.modalService.open(PdfFlipbookDialogComponent, {
+      fullscreen: true,
+      windowClass: 'pdf-flipbook-lightbox',
+    })
+    modal.componentInstance.src = this.previewUrl
+    modal.componentInstance.title = this.document.title
   }
 
   mouseEnterPreview() {

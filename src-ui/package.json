@@ -25,6 +25,7 @@
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.8",
     "file-saver": "^2.0.5",
+    "flipbook-viewer": "github:dcoffin88/flipbook-viewer",
     "lodash-es": "^4.18.1",
     "mime-names": "^1.0.0",
     "ngx-bootstrap-icons": "^1.9.3",
