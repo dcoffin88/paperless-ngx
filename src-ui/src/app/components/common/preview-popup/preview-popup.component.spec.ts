@@ -7,11 +7,13 @@ import {
 } from '@angular/common/http'
 import { provideHttpClientTesting } from '@angular/common/http/testing'
 import { By } from '@angular/platform-browser'
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { allIcons, NgxBootstrapIconsModule } from 'ngx-bootstrap-icons'
 import { of, throwError } from 'rxjs'
 import { SETTINGS_KEYS } from 'src/app/data/ui-settings'
 import { DocumentService } from 'src/app/services/rest/document.service'
 import { SettingsService } from 'src/app/services/settings.service'
+import { PdfFlipbookDialogComponent } from '../pdf-flipbook-viewer/pdf-flipbook-dialog.component'
 import { PngxPdfViewerComponent } from '../pdf-viewer/pdf-viewer.component'
 import { PreviewPopupComponent } from './preview-popup.component'
 
@@ -30,6 +32,7 @@ describe('PreviewPopupComponent', () => {
   let settingsService: SettingsService
   let documentService: DocumentService
   let http: HttpClient
+  let modalService: NgbModal
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -42,6 +45,7 @@ describe('PreviewPopupComponent', () => {
     settingsService = TestBed.inject(SettingsService)
     documentService = TestBed.inject(DocumentService)
     http = TestBed.inject(HttpClient)
+    modalService = TestBed.inject(NgbModal)
     jest
       .spyOn(documentService, 'getPreviewUrl')
       .mockImplementation((id) => doc.original_file_name)
@@ -65,6 +69,77 @@ describe('PreviewPopupComponent', () => {
     expect(component.useNativePdfViewer).toBeFalsy()
     settingsService.set(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER, true)
     expect(component.useNativePdfViewer).toBeTruthy()
+  })
+
+  it('should only use flipbook viewer for PDFs when flipbook viewer is enabled', () => {
+    settingsService.set(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER, false)
+    settingsService.set(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER, false)
+    expect(component.usePdfFlipbookViewer).toBeFalsy()
+    expect(component.previewLink).toBe(doc.original_file_name)
+
+    settingsService.set(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER, true)
+    expect(component.usePdfFlipbookViewer).toBeTruthy()
+    expect(component.previewLink).toBe(doc.original_file_name)
+
+    settingsService.set(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER, true)
+    expect(component.usePdfFlipbookViewer).toBeFalsy()
+    expect(component.previewLink).toBe(doc.original_file_name)
+  })
+
+  it('should not use flipbook links for non-pdf previews', () => {
+    settingsService.set(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER, true)
+    component.document = {
+      ...doc,
+      archived_file_name: undefined,
+      mime_type: 'image/png',
+      original_file_name: 'sample.png',
+    }
+    expect(component.usePdfFlipbookViewer).toBeFalsy()
+    expect(component.previewLink).toBe(doc.original_file_name)
+  })
+
+  it('should open enabled pdf flipbook previews in a lightbox', () => {
+    settingsService.set(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER, false)
+    settingsService.set(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER, true)
+    const modalRef = {
+      componentInstance: {},
+    }
+    const modalSpy = jest
+      .spyOn(modalService, 'open')
+      .mockReturnValue(modalRef as any)
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as MouseEvent
+
+    component.openPreview(event)
+
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(event.stopPropagation).toHaveBeenCalled()
+    expect(modalSpy).toHaveBeenCalledWith(PdfFlipbookDialogComponent, {
+      fullscreen: true,
+      windowClass: 'pdf-flipbook-lightbox',
+    })
+    expect(modalRef.componentInstance).toEqual({
+      src: doc.original_file_name,
+      title: doc.title,
+    })
+  })
+
+  it('should leave default preview links alone when flipbook viewer is disabled', () => {
+    settingsService.set(SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER, false)
+    settingsService.set(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER, false)
+    const modalSpy = jest.spyOn(modalService, 'open')
+    const event = {
+      preventDefault: jest.fn(),
+      stopPropagation: jest.fn(),
+    } as unknown as MouseEvent
+
+    component.openPreview(event)
+
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(event.stopPropagation).not.toHaveBeenCalled()
+    expect(modalSpy).not.toHaveBeenCalled()
   })
 
   it('should use fixed positioning for the preview popover', () => {

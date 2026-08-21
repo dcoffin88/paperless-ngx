@@ -50,6 +50,9 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
+      flipbook-viewer:
+        specifier: github:dcoffin88/flipbook-viewer
+        version: https://codeload.github.com/dcoffin88/flipbook-viewer/tar.gz/08b5482e807f6449adc032991000a9382eaf2397
       lodash-es:
         specifier: ^4.18.1
         version: 4.18.1
@@ -2066,6 +2069,9 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@tpp/htm-x@5.8.2':
+    resolution: {integrity: sha512-X+EI0TelqnRiBx9cuBr0rmcXt5ZYDeIuBi1UOvtZUQM0ZhMTZHCf+AlKJ7G2CbLqdCHsgKNQmgr6UHGEkwMGvA==}
+
   '@tsconfig/node10@1.0.12':
     resolution: {integrity: sha512-UCYBaeFvM11aU2y3YPZ//O5Rhj+xKyzy7mvcIoAjASbigy8mHMryP5cK7dgjlz2hWxh1g5pLw084E0a/wlUSFQ==}
 
@@ -2932,6 +2938,10 @@ packages:
 
   flatted@3.4.4:
     resolution: {integrity: sha512-5+ybhBZANEJxaH3X5evAFatUxLfEHSr7n6kYJ+1Qd0mUqr4eu9gIf6GDbWHf8RJijHrjjO8G+la14SlL2SeS1Q==}
+
+  flipbook-viewer@https://codeload.github.com/dcoffin88/flipbook-viewer/tar.gz/08b5482e807f6449adc032991000a9382eaf2397:
+    resolution: {gitHosted: true, integrity: sha512-oCcDbm5dzirv055XMNyylFdQnbGADXEb4b9GetY38L8FKc3ighgBGNvJ4cYs4Sjn57TTdpVpCQE1VnDar6Lq1w==, tarball: https://codeload.github.com/dcoffin88/flipbook-viewer/tar.gz/08b5482e807f6449adc032991000a9382eaf2397}
+    version: 1.6.1
 
   foreground-child@3.3.1:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
@@ -6201,6 +6211,8 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@tpp/htm-x@5.8.2': {}
+
   '@tsconfig/node10@1.0.12': {}
 
   '@tsconfig/node12@1.0.11': {}
@@ -7121,6 +7133,10 @@ snapshots:
       keyv: 4.5.4
 
   flatted@3.4.4: {}
+
+  flipbook-viewer@https://codeload.github.com/dcoffin88/flipbook-viewer/tar.gz/08b5482e807f6449adc032991000a9382eaf2397:
+    dependencies:
+      '@tpp/htm-x': 5.8.2
 
   foreground-child@3.3.1:
     dependencies:

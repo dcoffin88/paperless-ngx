@@ -15,6 +15,8 @@
 
 <!-- omit in toc -->
 
+**Personal-use fork of Paperless-ngx that adds a PDF flipbook viewer.**
+
 # Paperless-ngx
 
 Paperless-ngx is a document management system that transforms your physical documents into a searchable online archive so you can keep, well, _less paper_.

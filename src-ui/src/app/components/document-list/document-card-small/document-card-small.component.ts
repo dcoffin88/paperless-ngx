@@ -118,6 +118,14 @@ export class DocumentCardSmallComponent
     return this.documentService.getDownloadUrl(this.document().id)
   }
 
+  clickThumbnail(event: MouseEvent) {
+    if (this.popupPreview?.usePdfFlipbookViewer) {
+      this.popupPreview.openPreview(event)
+      return
+    }
+    this.toggleSelected.emit(event)
+  }
+
   get tagIDs() {
     const document = this.document()
     const limit = document.notes.length > 0 ? 6 : 7

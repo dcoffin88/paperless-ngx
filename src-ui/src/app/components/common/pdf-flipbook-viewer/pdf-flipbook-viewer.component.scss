@@ -1,0 +1,88 @@
+:host {
+  background: #2f2d2f;
+  display: block;
+  height: 100vh;
+  overflow: hidden;
+  width: 100vw;
+}
+
+.pdf-flipbook-viewer {
+  background: #2f2d2f;
+  height: 100%;
+  outline: none;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+  width: 100%;
+}
+
+.pdf-flipbook-stage {
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
+.pdf-flipbook-status {
+  align-items: center;
+  color: #fff;
+  display: flex;
+  font-size: 0.875rem;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+}
+
+.pdf-flipbook-status-error {
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: var(--bs-border-radius);
+  padding: 0.75rem 1rem;
+}
+
+.pdf-flipbook-toolbar {
+  align-items: center;
+  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: var(--bs-border-radius);
+  bottom: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+  left: 50%;
+  max-width: calc(100% - 1rem);
+  padding: 0.375rem;
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 30;
+
+  .btn {
+    align-items: center;
+    display: inline-flex;
+    height: 2rem;
+    justify-content: center;
+    padding: 0;
+    width: 2rem;
+  }
+}
+
+:host ::ng-deep {
+  .flipbook__page {
+    background: #fff;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.35);
+    display: block;
+    margin: 1rem auto;
+    max-width: calc(100% - 2rem);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .pdf-flipbook-stage {
+    overflow: auto;
+    padding-bottom: 4rem;
+  }
+
+  .pdf-flipbook-toolbar {
+    bottom: 0.5rem;
+  }
+}

@@ -1,0 +1,15 @@
+:host {
+  background: #2f2d2f;
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.pdf-flipbook-close {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  z-index: 40;
+}
