@@ -40,7 +40,6 @@ from rest_framework.viewsets import ModelViewSet
 
 from documents.models import PaperlessTask
 from documents.permissions import PaperlessObjectPermissions
-from documents.tasks import llmindex_index
 from paperless.filters import GroupFilterSet
 from paperless.filters import UserFilterSet
 from paperless.models import ApplicationConfiguration
@@ -49,7 +48,6 @@ from paperless.serialisers import GroupSerializer
 from paperless.serialisers import PaperlessAuthTokenSerializer
 from paperless.serialisers import ProfileSerializer
 from paperless.serialisers import UserSerializer
-from paperless_ai.indexing import llm_index_exists
 
 
 class PaperlessObtainAuthTokenView(ObtainAuthToken):
@@ -422,64 +420,7 @@ class ApplicationConfigurationViewSet(ModelViewSet[ApplicationConfiguration]):
         return Response(status=405)  # Not Allowed
 
     def perform_update(self, serializer):
-        old_instance = ApplicationConfiguration.objects.all().first()
-        old_llm_embedding_backend = (
-            old_instance.llm_embedding_backend or settings.LLM_EMBEDDING_BACKEND
-        )
-        old_llm_embedding_chunk_size = (
-            old_instance.llm_embedding_chunk_size or settings.LLM_EMBEDDING_CHUNK_SIZE
-        )
-        old_llm_embedding_endpoint = (
-            old_instance.llm_embedding_endpoint or settings.LLM_EMBEDDING_ENDPOINT
-        )
-        old_llm_embedding_model = (
-            old_instance.llm_embedding_model or settings.LLM_EMBEDDING_MODEL
-        )
-        old_llm_context_size = (
-            old_instance.llm_context_size or settings.LLM_CONTEXT_SIZE
-        )
-
-        new_instance: ApplicationConfiguration = serializer.save()
-        new_llm_embedding_backend = (
-            new_instance.llm_embedding_backend or settings.LLM_EMBEDDING_BACKEND
-        )
-        new_ai_enabled = (
-            new_instance.ai_enabled
-            if new_instance.ai_enabled is not None
-            else settings.AI_ENABLED
-        )
-        new_ai_index_enabled = bool(
-            new_ai_enabled and new_llm_embedding_backend,
-        )
-        new_llm_embedding_chunk_size = (
-            new_instance.llm_embedding_chunk_size or settings.LLM_EMBEDDING_CHUNK_SIZE
-        )
-        new_llm_embedding_endpoint = (
-            new_instance.llm_embedding_endpoint or settings.LLM_EMBEDDING_ENDPOINT
-        )
-        new_llm_embedding_model = (
-            new_instance.llm_embedding_model or settings.LLM_EMBEDDING_MODEL
-        )
-        new_llm_context_size = (
-            new_instance.llm_context_size or settings.LLM_CONTEXT_SIZE
-        )
-
-        embedding_config_changed = (
-            old_llm_embedding_backend != new_llm_embedding_backend
-            or old_llm_embedding_chunk_size != new_llm_embedding_chunk_size
-            or old_llm_embedding_endpoint != new_llm_embedding_endpoint
-            or old_llm_embedding_model != new_llm_embedding_model
-            or old_llm_context_size != new_llm_context_size
-        )
-        rebuild_needed = new_ai_index_enabled and (
-            not llm_index_exists() or embedding_config_changed
-        )
-
-        if rebuild_needed:
-            llmindex_index.apply_async(
-                kwargs={"rebuild": True},
-                headers={"trigger_source": PaperlessTask.TriggerSource.SYSTEM},
-            )
+        serializer.save()
 
 
 @extend_schema_view(

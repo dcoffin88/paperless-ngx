@@ -12,7 +12,6 @@ import { DocumentAsnComponent } from './components/document-asn/document-asn.com
 import { DocumentDetailComponent } from './components/document-detail/document-detail.component'
 import { DocumentListComponent } from './components/document-list/document-list.component'
 import { DocumentAttributesComponent } from './components/manage/document-attributes/document-attributes.component'
-import { MailComponent } from './components/manage/mail/mail.component'
 import { SavedViewsComponent } from './components/manage/saved-views/saved-views.component'
 import { WorkflowsComponent } from './components/manage/workflows/workflows.component'
 import { NotFoundComponent } from './components/not-found/not-found.component'
@@ -196,10 +195,6 @@ export const routes: Routes = [
       },
       // redirect old paths
       {
-        path: 'settings/mail',
-        redirectTo: '/mail',
-      },
-      {
         path: 'settings/usersgroups',
         redirectTo: '/usersgroups',
       },
@@ -272,18 +267,6 @@ export const routes: Routes = [
             type: PermissionType.Workflow,
           },
           componentName: 'WorkflowsComponent',
-        },
-      },
-      {
-        path: 'mail',
-        component: MailComponent,
-        canActivate: [PermissionsGuard],
-        data: {
-          requiredPermission: {
-            action: PermissionAction.View,
-            type: PermissionType.MailAccount,
-          },
-          componentName: 'MailComponent',
         },
       },
       {

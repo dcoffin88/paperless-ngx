@@ -18,7 +18,6 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import DecimalValidator
-from django.core.validators import EmailValidator
 from django.core.validators import MaxLengthValidator
 from django.core.validators import MaxValueValidator
 from django.core.validators import MinValueValidator
@@ -73,7 +72,6 @@ from documents.models import Tag
 from documents.models import UiSettings
 from documents.models import Workflow
 from documents.models import WorkflowAction
-from documents.models import WorkflowActionEmail
 from documents.models import WorkflowActionWebhook
 from documents.models import WorkflowTrigger
 from documents.parsers import is_mime_type_supported
@@ -1806,7 +1804,7 @@ class DeleteDocumentsSerializer(DocumentSelectionSerializer):
 
 
 class ReprocessDocumentsSerializer(DocumentSelectionSerializer):
-    remote_ocr = serializers.BooleanField(required=False, default=False)
+    pass
 
 
 class BulkEditSerializer(
@@ -2148,13 +2146,6 @@ class BulkEditSerializer(
                         f"Page {op['page']} is out of bounds for document with {doc.page_count} pages.",
                     )
 
-    def _validate_parameters_reprocess(self, parameters) -> None:
-        if "remote_ocr" in parameters:
-            if not isinstance(parameters["remote_ocr"], bool):
-                raise serializers.ValidationError("remote_ocr must be a boolean")
-        else:
-            parameters["remote_ocr"] = False
-
     def validate_parameters_remove_password(self, parameters):
         if "password" not in parameters:
             raise serializers.ValidationError("password not specified")
@@ -2460,51 +2451,6 @@ class BulkDownloadSerializer(DocumentSelectionSerializer):
         }[compression]
 
 
-class EmailSerializer(DocumentListSerializer):
-    addresses = serializers.CharField(
-        required=True,
-        label="Email addresses",
-        help_text="Comma-separated email addresses",
-    )
-
-    subject = serializers.CharField(
-        required=True,
-        label="Email subject",
-    )
-
-    message = serializers.CharField(
-        required=True,
-        label="Email message",
-    )
-
-    use_archive_version = serializers.BooleanField(
-        default=True,
-        label="Use archive version",
-        help_text="Use archive version of documents if available",
-    )
-
-    def validate_addresses(self, addresses):
-        address_list = [addr.strip() for addr in addresses.split(",")]
-        if not address_list:
-            raise serializers.ValidationError("At least one email address is required")
-
-        email_validator = EmailValidator()
-        try:
-            for address in address_list:
-                email_validator(address)
-        except ValidationError:
-            raise serializers.ValidationError(f"Invalid email address: {address}")
-
-        return ",".join(address_list)
-
-    def validate_documents(self, documents):
-        super().validate_documents(documents)
-        if not documents:
-            raise serializers.ValidationError("At least one document is required")
-
-        return documents
-
-
 class StoragePathSerializer(MatchingModelSerializer, OwnedObjectSerializer):
     class Meta:
         model = StoragePath
@@ -2673,7 +2619,6 @@ class TaskSerializerV9(serializers.ModelSerializer[PaperlessTask]):
 
     _TASK_TYPE_TO_V9_NAME = {
         PaperlessTask.TaskType.SANITY_CHECK: "check_sanity",
-        PaperlessTask.TaskType.LLM_INDEX: "llmindex_update",
     }
 
     def get_result(self, obj: PaperlessTask) -> str | None:
@@ -2712,8 +2657,7 @@ class TaskSerializerV9(serializers.ModelSerializer[PaperlessTask]):
     _TRIGGER_SOURCE_TO_V9_TYPE = {
         PaperlessTask.TriggerSource.SCHEDULED: "scheduled_task",
         PaperlessTask.TriggerSource.SYSTEM: "auto_task",
-        # Email and folder-consumer documents are system-initiated, not manually triggered
-        PaperlessTask.TriggerSource.EMAIL_CONSUME: "auto_task",
+        # Folder-consumer documents are system-initiated, not manually triggered
         PaperlessTask.TriggerSource.FOLDER_CONSUME: "auto_task",
     }
 
@@ -3061,7 +3005,6 @@ class WorkflowTriggerSerializer(serializers.ModelSerializer[WorkflowTrigger]):
         default={
             DocumentSource.ConsumeFolder,
             DocumentSource.ApiUpload,
-            DocumentSource.MailFetch,
         },
     )
 
@@ -3078,7 +3021,6 @@ class WorkflowTriggerSerializer(serializers.ModelSerializer[WorkflowTrigger]):
             "type",
             "filter_path",
             "filter_filename",
-            "filter_mailrule",
             "matching_algorithm",
             "match",
             "is_insensitive",
@@ -3134,12 +3076,11 @@ class WorkflowTriggerSerializer(serializers.ModelSerializer[WorkflowTrigger]):
         trigger_type = attrs.get("type", getattr(self.instance, "type", None))
         if (
             trigger_type == WorkflowTrigger.WorkflowTriggerType.CONSUMPTION
-            and "filter_mailrule" not in attrs
             and ("filter_filename" not in attrs or attrs["filter_filename"] is None)
             and ("filter_path" not in attrs or attrs["filter_path"] is None)
         ):
             raise serializers.ValidationError(
-                "File name, path or mail rule filter are required",
+                "File name or path filter is required",
             )
 
         return attrs
@@ -3161,20 +3102,6 @@ class WorkflowTriggerSerializer(serializers.ModelSerializer[WorkflowTrigger]):
     def update(self, instance, validated_data):
         WorkflowTriggerSerializer.normalize_workflow_trigger_sources(validated_data)
         return super().update(instance, validated_data)
-
-
-class WorkflowActionEmailSerializer(serializers.ModelSerializer[WorkflowActionEmail]):
-    id = serializers.IntegerField(allow_null=True, required=False)
-
-    class Meta:
-        model = WorkflowActionEmail
-        fields = [
-            "id",
-            "subject",
-            "body",
-            "to",
-            "include_document",
-        ]
 
 
 class WorkflowActionWebhookSerializer(
@@ -3206,7 +3133,6 @@ class WorkflowActionSerializer(serializers.ModelSerializer[WorkflowAction]):
     assign_tags = TagsField(many=True, allow_null=True, required=False)
     assign_document_type = DocumentTypeField(allow_null=True, required=False)
     assign_storage_path = StoragePathField(allow_null=True, required=False)
-    email = WorkflowActionEmailSerializer(allow_null=True, required=False)
     webhook = WorkflowActionWebhookSerializer(allow_null=True, required=False)
 
     class Meta:
@@ -3243,12 +3169,8 @@ class WorkflowActionSerializer(serializers.ModelSerializer[WorkflowAction]):
             "remove_view_groups",
             "remove_change_users",
             "remove_change_groups",
-            "email",
             "webhook",
             "passwords",
-            "ai_suggestion_fields",
-            "ai_create_missing",
-            "ai_overwrite_existing",
         ]
 
     def validate(self, attrs):
@@ -3270,15 +3192,6 @@ class WorkflowActionSerializer(serializers.ModelSerializer[WorkflowAction]):
                 field_id: (None if value == "" else value)
                 for field_id, value in attrs["assign_custom_fields_values"].items()
             }
-
-        if (
-            "type" in attrs
-            and attrs["type"] == WorkflowAction.WorkflowActionType.EMAIL
-            and "email" not in attrs
-        ):
-            raise serializers.ValidationError(
-                "Email data is required for email actions",
-            )
 
         if (
             "type" in attrs
@@ -3306,23 +3219,6 @@ class WorkflowActionSerializer(serializers.ModelSerializer[WorkflowAction]):
                     "Passwords are required for password removal actions",
                 )
 
-        if (
-            "type" in attrs
-            and attrs["type"] == WorkflowAction.WorkflowActionType.APPLY_AI_SUGGESTIONS
-        ):
-            fields = attrs.get("ai_suggestion_fields")
-            valid_fields = set(WorkflowAction.AISuggestionField.values)
-            if (
-                fields is None
-                or not isinstance(fields, list)
-                or len(fields) == 0
-                or any(field not in valid_fields for field in fields)
-            ):
-                raise serializers.ValidationError(
-                    "At least one valid field is required for apply AI "
-                    f"suggestions actions, options are: {sorted(valid_fields)}",
-                )
-
         return attrs
 
 
@@ -3345,63 +3241,6 @@ class WorkflowSerializer(serializers.ModelSerializer[Workflow]):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-
-        if "actions" in attrs:
-            has_remote_ocr_action = any(
-                action.get("type") == WorkflowAction.WorkflowActionType.REMOTE_OCR
-                for action in attrs["actions"]
-            )
-            has_ai_suggestions_action = any(
-                action.get("type")
-                == WorkflowAction.WorkflowActionType.APPLY_AI_SUGGESTIONS
-                for action in attrs["actions"]
-            )
-        else:
-            has_remote_ocr_action = self.instance is not None and (
-                self.instance.actions.filter(
-                    type=WorkflowAction.WorkflowActionType.REMOTE_OCR,
-                ).exists()
-            )
-            has_ai_suggestions_action = self.instance is not None and (
-                self.instance.actions.filter(
-                    type=WorkflowAction.WorkflowActionType.APPLY_AI_SUGGESTIONS,
-                ).exists()
-            )
-
-        if "triggers" in attrs:
-            has_consumption_trigger = any(
-                trigger.get("type") == WorkflowTrigger.WorkflowTriggerType.CONSUMPTION
-                for trigger in attrs["triggers"]
-            )
-            has_non_consumption_trigger = any(
-                trigger.get("type") != WorkflowTrigger.WorkflowTriggerType.CONSUMPTION
-                for trigger in attrs["triggers"]
-            )
-        else:
-            has_consumption_trigger = self.instance is not None and (
-                self.instance.triggers.filter(
-                    type=WorkflowTrigger.WorkflowTriggerType.CONSUMPTION,
-                ).exists()
-            )
-            has_non_consumption_trigger = self.instance is not None and (
-                self.instance.triggers.exclude(
-                    type=WorkflowTrigger.WorkflowTriggerType.CONSUMPTION,
-                ).exists()
-            )
-
-        # Remote OCR can only work with consumption triggers
-        if has_remote_ocr_action and not has_consumption_trigger:
-            raise serializers.ValidationError(
-                "Remote OCR actions require a consumption started trigger",
-            )
-
-        # Suggestions are made from the document content, which does not exist
-        # until after consumption has finished
-        if has_ai_suggestions_action and not has_non_consumption_trigger:
-            raise serializers.ValidationError(
-                "Apply AI suggestions actions require a trigger other than "
-                "consumption started",
-            )
 
         return attrs
 
@@ -3501,23 +3340,12 @@ class WorkflowSerializer(serializers.ModelSerializer[Workflow]):
                 remove_change_users = action.pop("remove_change_users", None)
                 remove_change_groups = action.pop("remove_change_groups", None)
 
-                email_data = action.pop("email", None)
                 webhook_data = action.pop("webhook", None)
 
                 action_instance, _ = WorkflowAction.objects.update_or_create(
                     id=action.get("id"),
                     defaults=action,
                 )
-
-                if email_data is not None:
-                    serializer = WorkflowActionEmailSerializer(data=email_data)
-                    serializer.is_valid(raise_exception=True)
-                    email, _ = WorkflowActionEmail.objects.update_or_create(
-                        id=email_data.get("id"),
-                        defaults=serializer.validated_data,
-                    )
-                    action_instance.email = email
-                    action_instance.save()
 
                 if webhook_data is not None:
                     serializer = WorkflowActionWebhookSerializer(data=webhook_data)
@@ -3583,7 +3411,6 @@ class WorkflowSerializer(serializers.ModelSerializer[Workflow]):
             workflow_count=Count("workflows"),
         ).filter(workflow_count=0).delete()
 
-        WorkflowActionEmail.objects.filter(action=None).delete()
         WorkflowActionWebhook.objects.filter(action=None).delete()
 
     def create(self, validated_data) -> Workflow:

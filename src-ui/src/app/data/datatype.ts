@@ -7,8 +7,6 @@ export enum DataType {
   Tag = 'tag',
   User = 'user',
   Group = 'group',
-  MailAccount = 'mail_account',
-  MailRule = 'mail_rule',
   CustomField = 'custom_field',
   Workflow = 'workflow',
 }

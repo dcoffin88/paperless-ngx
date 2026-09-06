@@ -19,7 +19,6 @@ from django.utils import timezone
 from filelock import FileLock
 
 from documents import sanity_checker
-from documents.barcodes import BarcodePlugin
 from documents.bulk_download import ArchiveOnlyStrategy
 from documents.bulk_download import OriginalsOnlyStrategy
 from documents.caching import clear_document_caches
@@ -61,20 +60,12 @@ from documents.signals import document_updated
 from documents.signals.handlers import cleanup_document_deletion
 from documents.signals.handlers import run_workflows
 from documents.signals.handlers import send_websocket_document_updated
-from documents.utils import IterWrapper
 from documents.utils import compute_checksum
-from documents.utils import identity
 from documents.versioning import annotate_effective_content
 from documents.workflows.utils import get_workflows_for_trigger
-from paperless.config import AIConfig
-from paperless.config import RemoteOCRConfig
 from paperless.logging import consume_task_id
 from paperless.parsers import ParserContext
 from paperless.parsers.registry import get_parser_registry
-from paperless_ai.exceptions import LLMTimeoutError
-from paperless_ai.indexing import llm_index_add_or_update_document
-from paperless_ai.indexing import llm_index_remove_document
-from paperless_ai.indexing import update_llm_index
 
 if settings.AUDIT_LOG_ENABLED:
     from auditlog.models import LogEntry
@@ -205,8 +196,6 @@ def consume_file(
                 ConsumerPreflightPlugin,
                 AsnCheckPlugin,
                 CollatePlugin,
-                BarcodePlugin,
-                AsnCheckPlugin,  # Re-run ASN check after barcode reading
                 WorkflowTriggerPlugin,
                 ConsumerPlugin,
             ]
@@ -326,33 +315,21 @@ def bulk_update_documents(document_ids) -> None:
             sender=None,
             document=doc,
             logging_group=uuid.uuid4(),
-            skip_ai_index=True,  # bulk path calls update_llm_index once below
         )
         post_save.send(Document, instance=doc, created=False)
 
     with get_backend().batch_update() as batch:
         batch.add_or_update_ids(document_ids)
 
-    ai_config = AIConfig()
-    if ai_config.llm_index_enabled:
-        update_llm_index(
-            rebuild=False,
-            document_ids=document_ids,
-        )
-
 
 @shared_task
 def update_document_content_maybe_archive_file(
     document_id,
-    *,
-    remote_ocr: bool = False,
 ) -> None:
     """
     Re-creates OCR content and thumbnail for a document, and archive file if
     it exists.
 
-    Remote OCR is used only when the engine is configured to handle everything
-    or if explicitly asked for via ``remote_ocr``.
     """
     document = Document.objects.get(id=document_id)
 
@@ -362,7 +339,7 @@ def update_document_content_maybe_archive_file(
         mime_type,
         document.original_filename or "",
         document.source_path,
-        allow_remote=remote_ocr or RemoteOCRConfig().remote_ocr_by_default,
+        allow_remote=False,
     )
 
     if not parser_class:
@@ -456,10 +433,6 @@ def update_document_content_maybe_archive_file(
             from documents.search import get_backend
 
             get_backend().add_or_update(document)
-
-            ai_config = AIConfig()
-            if ai_config.llm_index_enabled:
-                llm_index_add_or_update_document(document)
 
             clear_document_caches(document.pk)
 
@@ -696,74 +669,6 @@ def update_document_parent_tags(tag: Tag, new_parent: Tag) -> None:
             kwargs={"document_ids": list(affected)},
             headers={"trigger_source": PaperlessTask.TriggerSource.SYSTEM},
         )
-
-
-@shared_task
-def llmindex_index(
-    *,
-    iter_wrapper: IterWrapper[Document] = identity,
-    rebuild: bool = False,
-) -> str | None:
-    ai_config = AIConfig()
-    if not ai_config.llm_index_enabled:  # pragma: no cover
-        logger.info("LLM index is disabled, skipping update.")
-        return None
-
-    from paperless_ai.indexing import update_llm_index
-
-    return update_llm_index(
-        iter_wrapper=iter_wrapper,
-        rebuild=rebuild,
-    )
-
-
-@shared_task(
-    bind=True,
-    autoretry_for=(LLMTimeoutError,),
-    max_retries=3,
-    retry_backoff=60,
-    retry_backoff_max=600,
-    retry_jitter=True,
-)
-def apply_ai_suggestions(self, action_id: int, document_id: int) -> None:
-    """
-    Deferred "apply AI suggestions" workflow action.
-    """
-    from documents.models import WorkflowAction
-    from documents.workflows.ai import apply_ai_suggestions_to_document
-
-    try:
-        action = WorkflowAction.objects.get(pk=action_id)
-        document = Document.objects.select_related("owner").get(pk=document_id)
-    except (WorkflowAction.DoesNotExist, Document.DoesNotExist):
-        logger.warning(
-            "Workflow action %s or document %s no longer exists, "
-            "not applying AI suggestions",
-            action_id,
-            document_id,
-        )
-        return
-
-    if not apply_ai_suggestions_to_document(action, document):
-        return
-
-    # No document_updated signal to avoid loop
-    clear_document_caches(document.pk)
-    index_document.delay(document.pk)
-
-    ai_config = AIConfig()
-    if ai_config.llm_index_enabled:
-        update_document_in_llm_index.apply_async(kwargs={"document": document})
-
-
-@shared_task
-def update_document_in_llm_index(document) -> None:
-    llm_index_add_or_update_document(document)
-
-
-@shared_task
-def remove_document_from_llm_index(document) -> None:
-    llm_index_remove_document(document)
 
 
 @shared_task

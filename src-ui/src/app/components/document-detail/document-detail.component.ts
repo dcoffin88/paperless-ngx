@@ -106,7 +106,6 @@ import { DocumentTypeEditDialogComponent } from '../common/edit-dialog/document-
 import { EditDialogMode } from '../common/edit-dialog/edit-dialog.component'
 import { StoragePathEditDialogComponent } from '../common/edit-dialog/storage-path-edit-dialog/storage-path-edit-dialog.component'
 import { TagEditDialogComponent } from '../common/edit-dialog/tag-edit-dialog/tag-edit-dialog.component'
-import { EmailDocumentDialogComponent } from '../common/email-document-dialog/email-document-dialog.component'
 import { CheckComponent } from '../common/input/check/check.component'
 import { DateComponent } from '../common/input/date/date.component'
 import { DocumentLinkComponent } from '../common/input/document-link/document-link.component'
@@ -230,9 +229,6 @@ export class DocumentDetailComponent
   private readonly useNativePdfViewerSetting = this.settings.getSignal<boolean>(
     SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER
   )
-  private readonly aiEnabledSetting = this.settings.getSignal<boolean>(
-    SETTINGS_KEYS.AI_ENABLED
-  )
   private readonly showThumbnailOverlaySetting =
     this.settings.getSignal<boolean>(
       SETTINGS_KEYS.DOCUMENT_EDITING_OVERLAY_THUMBNAIL
@@ -351,10 +347,6 @@ export class DocumentDetailComponent
 
   get isMobile(): boolean {
     return this.deviceDetectorService.isMobile()
-  }
-
-  get aiEnabled(): boolean {
-    return this.aiEnabledSetting()
   }
 
   get archiveContentRenderType(): ContentRenderType {
@@ -1015,10 +1007,8 @@ export class DocumentDetailComponent
 
   getSuggestions() {
     this.suggestionsLoading.set(true)
-    const suggestionsObservable = this.aiEnabled
-      ? this.documentsService.getAiSuggestions(this.documentId())
-      : this.documentsService.getSuggestions(this.documentId())
-    suggestionsObservable
+    this.documentsService
+      .getSuggestions(this.documentId())
       .pipe(
         first(),
         takeUntil(this.unsubscribeNotifier),
@@ -1415,10 +1405,7 @@ export class DocumentDetailComponent
     modal.componentInstance.confirmClicked.subscribe(() => {
       modal.componentInstance.buttonsEnabled.set(false)
       this.documentsService
-        .reprocessDocuments(
-          { documents: [this.document().id] },
-          modal.componentInstance.remoteOcr
-        )
+        .reprocessDocuments({ documents: [this.document().id] })
         .subscribe({
           next: () => {
             this.toastService.showInfo(
@@ -1968,23 +1955,6 @@ export class DocumentDetailComponent
     modal.componentInstance.documentId.set(
       this.selectedVersionId() ?? this.document().id
     )
-    modal.componentInstance.hasArchiveVersion.set(
-      this.metadata()?.has_archive_version ??
-        !!this.document()?.archived_file_name
-    )
-  }
-
-  get emailEnabled(): boolean {
-    return this.settings.get(SETTINGS_KEYS.EMAIL_ENABLED)
-  }
-
-  public openEmailDocument() {
-    const modal = this.modalService.open(EmailDocumentDialogComponent, {
-      backdrop: 'static',
-    })
-    modal.componentInstance.documentIds.set([
-      this.selectedVersionId() ?? this.document().id,
-    ])
     modal.componentInstance.hasArchiveVersion.set(
       this.metadata()?.has_archive_version ??
         !!this.document()?.archived_file_name

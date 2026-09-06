@@ -21,7 +21,6 @@ export class SuggestionsDropdownComponent {
 
   @ViewChild('dropdown') dropdown: NgbDropdown
   readonly suggestions = input<DocumentSuggestions>(null)
-  readonly aiEnabled = input(false)
   readonly loading = input(false)
   readonly disabled = input(false)
 
@@ -44,11 +43,7 @@ export class SuggestionsDropdownComponent {
   addCorrespondent: EventEmitter<string> = new EventEmitter()
 
   public clickSuggest(): void {
-    if (
-      this.disabled() ||
-      this.loading() ||
-      (this.suggestions() && !this.aiEnabled())
-    ) {
+    if (this.disabled() || this.loading()) {
       return
     }
 

@@ -58,7 +58,6 @@ from django.http import HttpResponseBadRequest
 from django.http import HttpResponseForbidden
 from django.http import HttpResponseRedirect
 from django.http import HttpResponseServerError
-from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -110,13 +109,10 @@ from documents import bulk_edit
 from documents.bulk_download import ArchiveOnlyStrategy
 from documents.bulk_download import OriginalAndArchiveStrategy
 from documents.bulk_download import OriginalsOnlyStrategy
-from documents.caching import get_llm_suggestion_cache
 from documents.caching import get_metadata_cache
 from documents.caching import get_suggestion_cache
-from documents.caching import refresh_llm_suggestions_cache
 from documents.caching import refresh_metadata_cache
 from documents.caching import refresh_suggestions_cache
-from documents.caching import set_llm_suggestions_cache
 from documents.caching import set_metadata_cache
 from documents.caching import set_suggestions_cache
 from documents.classifier import load_classifier
@@ -143,8 +139,6 @@ from documents.filters import ShareLinkBundleFilterSet
 from documents.filters import ShareLinkFilterSet
 from documents.filters import StoragePathFilterSet
 from documents.filters import TagFilterSet
-from documents.mail import EmailAttachment
-from documents.mail import send_email
 from documents.matching import match_correspondents
 from documents.matching import match_document_types
 from documents.matching import match_storage_paths
@@ -197,7 +191,6 @@ from documents.serialisers import DocumentTypeSerializer
 from documents.serialisers import DocumentVersionLabelSerializer
 from documents.serialisers import DocumentVersionSerializer
 from documents.serialisers import EditPdfDocumentsSerializer
-from documents.serialisers import EmailSerializer
 from documents.serialisers import MergeDocumentsAsVersionsSerializer
 from documents.serialisers import MergeDocumentsSerializer
 from documents.serialisers import NotesSerializer
@@ -226,7 +219,6 @@ from documents.signals import document_updated
 from documents.tasks import build_share_link_bundle
 from documents.tasks import consume_file
 from documents.tasks import empty_trash
-from documents.tasks import llmindex_index
 from documents.tasks import sanity_check
 from documents.tasks import train_classifier
 from documents.tasks import update_document_parent_tags
@@ -239,40 +231,15 @@ from documents.versioning import resolve_requested_version_for_root
 from documents.versioning import versions_newest_first
 from paperless import version
 from paperless.celery import app as celery_app
-from paperless.config import AIConfig
 from paperless.config import GeneralConfig
-from paperless.config import RemoteOCRConfig
 from paperless.models import ApplicationConfiguration
 from paperless.parsers.registry import get_parser_registry
-from paperless.parsers.remote import RemoteEngineConfig
 from paperless.serialisers import GroupSerializer
 from paperless.serialisers import UserSerializer
 from paperless.views import StandardPagination
-from paperless_ai.ai_classifier import get_ai_document_classification
-from paperless_ai.ai_classifier import get_llm_output_language
-from paperless_ai.chat import stream_chat_with_documents
-from paperless_ai.exceptions import LLMTimeoutError
-from paperless_ai.matching import extract_unmatched_names
-from paperless_ai.matching import match_correspondents_by_name
-from paperless_ai.matching import match_document_types_by_name
-from paperless_ai.matching import match_storage_paths_by_name
-from paperless_ai.matching import match_tags_by_name
-from paperless_ai.matching import resolve_correspondent_ids
-from paperless_ai.matching import resolve_document_type_ids
-from paperless_ai.matching import resolve_storage_path_ids
-from paperless_ai.matching import resolve_tag_ids
-from paperless_mail.models import MailAccount
-from paperless_mail.models import MailRule
-from paperless_mail.oauth import PaperlessMailOAuth2Manager
-from paperless_mail.serialisers import MailAccountSerializer
-from paperless_mail.serialisers import MailRuleSerializer
 
 if settings.AUDIT_LOG_ENABLED:
     from auditlog.models import LogEntry
-
-if TYPE_CHECKING:
-    from paperless_ai.base_model import TaxonomyChoiceDict
-
 
 logger = logging.getLogger("paperless.api")
 
@@ -697,14 +664,6 @@ class DocumentTypeViewSet(
     ordering_fields = ("name", "matching_algorithm", "match", "document_count")
 
 
-@extend_schema_serializer(
-    component_name="EmailDocumentRequest",
-    exclude_fields=("documents",),
-)
-class EmailDocumentDetailSchema(EmailSerializer):
-    pass
-
-
 @extend_schema_view(
     retrieve=extend_schema(
         description="Retrieve a single document",
@@ -873,43 +832,6 @@ class EmailDocumentDetailSchema(EmailSerializer):
             404: None,
         },
     ),
-    ai_suggestions=extend_schema(
-        description="View AI suggestions for the document",
-        responses={
-            200: inline_serializer(
-                name="AISuggestions",
-                fields={
-                    "title": serializers.CharField(allow_null=True),
-                    "correspondents": serializers.ListField(
-                        child=serializers.IntegerField(),
-                    ),
-                    "suggested_correspondents": serializers.ListField(
-                        child=serializers.CharField(),
-                    ),
-                    "tags": serializers.ListField(child=serializers.IntegerField()),
-                    "suggested_tags": serializers.ListField(
-                        child=serializers.CharField(),
-                    ),
-                    "document_types": serializers.ListField(
-                        child=serializers.IntegerField(),
-                    ),
-                    "suggested_document_types": serializers.ListField(
-                        child=serializers.CharField(),
-                    ),
-                    "storage_paths": serializers.ListField(
-                        child=serializers.IntegerField(),
-                    ),
-                    "suggested_storage_paths": serializers.ListField(
-                        child=serializers.CharField(),
-                    ),
-                    "dates": serializers.ListField(child=serializers.CharField()),
-                },
-            ),
-            400: None,
-            403: None,
-            404: None,
-        },
-    ),
     thumb=extend_schema(
         description="View the document thumbnail",
         responses={200: OpenApiTypes.BINARY},
@@ -944,36 +866,6 @@ class EmailDocumentDetailSchema(EmailSerializer):
             400: None,
             403: None,
             404: None,
-        },
-    ),
-    email_document=extend_schema(
-        description="Email the document to one or more recipients as an attachment.",
-        request=EmailDocumentDetailSchema,
-        responses={
-            200: inline_serializer(
-                name="EmailDocumentResponse",
-                fields={"message": serializers.CharField()},
-            ),
-            400: None,
-            403: None,
-            404: None,
-            500: None,
-        },
-        deprecated=True,
-    ),
-    email_documents=extend_schema(
-        operation_id="email_documents",
-        description="Email one or more documents as attachments to one or more recipients.",
-        request=EmailSerializer,
-        responses={
-            200: inline_serializer(
-                name="EmailDocumentsResponse",
-                fields={"message": serializers.CharField()},
-            ),
-            400: None,
-            403: None,
-            404: None,
-            500: None,
         },
     ),
 )
@@ -1018,7 +910,7 @@ class DocumentViewSet(
     def _get_selection_data_for_queryset(self, queryset):
         # Resolve once instead of once per model below. `queryset` can carry an
         # arbitrarily expensive WHERE clause (user filters plus the permission
-        # filter); re-embedding it as a subquery inside 5 separate Count(...)
+        # filter); using it as a subquery inside 5 separate Count(...)
         # calls forces the database to re-evaluate that whole thing 5 times, and
         # -- for FK relations especially -- can defeat semi-join planning
         # entirely at scale. A concrete id list is cheap to reuse.
@@ -1516,176 +1408,6 @@ class DocumentViewSet(
 
         return Response(resp_data)
 
-    @action(
-        methods=["get"],
-        detail=True,
-        filter_backends=[],
-        url_path="ai_suggestions",
-    )
-    @method_decorator(cache_control(no_cache=True))
-    def ai_suggestions(self, request, pk=None):
-        doc = get_object_or_404(
-            Document.objects.select_related("owner").prefetch_related("versions"),
-            pk=pk,
-        )
-        if request.user is not None and not has_perms_owner_aware(
-            request.user,
-            "change_document",
-            doc,
-        ):
-            return HttpResponseForbidden("Insufficient permissions")
-
-        ai_config = AIConfig()
-        if not ai_config.ai_enabled:
-            return HttpResponseBadRequest("AI is required for this feature")
-
-        output_language = get_llm_output_language(
-            ai_config=ai_config,
-            user=request.user,
-        )
-        llm_cache_backend = ":".join(
-            part
-            for part in (
-                ai_config.llm_backend,
-                ai_config.llm_model,
-                ai_config.llm_endpoint,
-                output_language,
-                f"user={request.user.pk}",
-            )
-            if part
-        )
-
-        cached_llm_suggestions = get_llm_suggestion_cache(
-            doc.pk,
-            backend=llm_cache_backend,
-        )
-
-        if cached_llm_suggestions:
-            # Only the raw model choices are cached, never resolved object
-            # ids. resolve_choice() below still runs permission filtering
-            # freshly for this requester on every request, cache hit or not,
-            # so a resolved id cached for one user's visibility can never be
-            # handed unfiltered to a second, less-privileged requester of
-            # the same (backend + user-keyed) cache entry.
-            refresh_llm_suggestions_cache(
-                doc.pk,
-                backend=llm_cache_backend,
-            )
-            llm_suggestions = cached_llm_suggestions.suggestions
-        else:
-            try:
-                llm_suggestions = get_ai_document_classification(
-                    doc,
-                    request.user,
-                    output_language,
-                )
-            except ValueError as exc:
-                logger.exception(
-                    "Invalid AI configuration while generating suggestions for "
-                    "document %s: %s",
-                    doc.pk,
-                    exc,
-                    exc_info=True,
-                )
-                raise ValidationError(
-                    {"ai": [_("Invalid AI configuration.")]},
-                ) from exc
-            except LLMTimeoutError as exc:
-                logger.exception(
-                    "AI backend timed out while generating suggestions for "
-                    "document %s: %s",
-                    doc.pk,
-                    exc,
-                    exc_info=True,
-                )
-                return Response(
-                    {"ai": [_("AI backend request timed out.")]},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            set_llm_suggestions_cache(
-                doc.pk,
-                llm_suggestions,
-                backend=llm_cache_backend,
-            )
-
-        tags_choice: TaxonomyChoiceDict = llm_suggestions["tags"]
-        correspondents_choice: TaxonomyChoiceDict = llm_suggestions["correspondents"]
-        document_types_choice: TaxonomyChoiceDict = llm_suggestions["document_types"]
-        storage_paths_choice: TaxonomyChoiceDict = llm_suggestions["storage_paths"]
-
-        def resolve_choice(
-            choice: "TaxonomyChoiceDict",
-            resolve_ids: Callable[[list[int], User], list],
-            match_names: Callable[[list[str], User], list],
-        ) -> list:
-            """The ids the model picked from the candidates it was shown, plus
-            name matches for the values it proposed as new. The schema allows
-            the same object to satisfy both an existing_id and a new_name in
-            one valid response, so results are deduplicated by pk (keeping
-            first-seen order) rather than trusting the two lookups to be
-            disjoint.
-            """
-            matched = resolve_ids(choice["existing_ids"], request.user) + match_names(
-                choice["new_names"],
-                request.user,
-            )
-            seen_ids: set[int] = set()
-            deduped = []
-            for obj in matched:
-                if obj.pk in seen_ids:
-                    continue
-                seen_ids.add(obj.pk)
-                deduped.append(obj)
-            return deduped
-
-        matched_tags = resolve_choice(
-            tags_choice,
-            resolve_tag_ids,
-            match_tags_by_name,
-        )
-        matched_correspondents = resolve_choice(
-            correspondents_choice,
-            resolve_correspondent_ids,
-            match_correspondents_by_name,
-        )
-        matched_types = resolve_choice(
-            document_types_choice,
-            resolve_document_type_ids,
-            match_document_types_by_name,
-        )
-        matched_paths = resolve_choice(
-            storage_paths_choice,
-            resolve_storage_path_ids,
-            match_storage_paths_by_name,
-        )
-
-        resp_data = {
-            "title": llm_suggestions["title"],
-            "tags": [t.id for t in matched_tags],
-            "suggested_tags": extract_unmatched_names(
-                tags_choice["new_names"],
-                matched_tags,
-            ),
-            "correspondents": [c.id for c in matched_correspondents],
-            "suggested_correspondents": extract_unmatched_names(
-                correspondents_choice["new_names"],
-                matched_correspondents,
-            ),
-            "document_types": [d.id for d in matched_types],
-            "suggested_document_types": extract_unmatched_names(
-                document_types_choice["new_names"],
-                matched_types,
-            ),
-            "storage_paths": [s.id for s in matched_paths],
-            "suggested_storage_paths": extract_unmatched_names(
-                storage_paths_choice["new_names"],
-                matched_paths,
-            ),
-            "dates": llm_suggestions["dates"],
-        }
-
-        return Response(resp_data)
-
     @action(methods=["get"], detail=True, filter_backends=[])
     @method_decorator(cache_control(no_cache=True))
     @method_decorator(
@@ -1957,85 +1679,6 @@ class DocumentViewSet(
         return Response(sorted(entries, key=lambda x: x["timestamp"], reverse=True))
 
     @extend_schema(
-        operation_id="documents_email_document",
-        deprecated=True,
-    )
-    @action(
-        methods=["post"],
-        detail=True,
-        url_path="email",
-        permission_classes=[IsAuthenticated, ViewDocumentsPermissions],
-    )
-    # TODO: deprecated, remove with drop of support for API v9
-    def email_document(self, request, pk=None):
-        request_data = request.data.copy()
-        request_data.setlist("documents", [pk])
-        return self.email_documents(request, data=request_data)
-
-    @action(
-        methods=["post"],
-        detail=False,
-        url_path="email",
-        serializer_class=EmailSerializer,
-        permission_classes=[IsAuthenticated, ViewDocumentsPermissions],
-    )
-    def email_documents(self, request, data=None):
-        serializer = EmailSerializer(data=data or request.data)
-        serializer.is_valid(raise_exception=True)
-
-        validated_data = serializer.validated_data
-        document_ids = validated_data.get("documents")
-        addresses = validated_data.get("addresses").split(",")
-        addresses = [addr.strip() for addr in addresses]
-        subject = validated_data.get("subject")
-        message = validated_data.get("message")
-        use_archive_version = validated_data.get("use_archive_version", True)
-
-        documents = Document.objects.filter(pk__in=document_ids)
-        if (
-            request.user is not None
-            and documents.exclude(
-                pk__in=permitted_document_ids(request.user),
-            ).exists()
-        ):
-            return HttpResponseForbidden("Insufficient permissions")
-
-        try:
-            attachments: list[EmailAttachment] = []
-            for doc in documents:
-                attachment_path = (
-                    doc.archive_path
-                    if use_archive_version and doc.has_archive_version
-                    else doc.source_path
-                )
-                attachments.append(
-                    EmailAttachment(
-                        path=attachment_path,
-                        mime_type=doc.mime_type,
-                        friendly_name=doc.get_public_filename(
-                            archive=use_archive_version and doc.has_archive_version,
-                        ),
-                    ),
-                )
-
-            send_email(
-                subject=subject,
-                body=message,
-                to=addresses,
-                attachments=attachments,
-            )
-
-            logger.debug(
-                f"Sent documents {[doc.id for doc in documents]} via email to {addresses}",
-            )
-            return Response({"message": "Email sent"})
-        except Exception as e:
-            logger.warning(f"An error occurred emailing documents: {e!s}")
-            return HttpResponseServerError(
-                "Error emailing documents, check logs for more detail.",
-            )
-
-    @extend_schema(
         operation_id="documents_update_version",
         request=DocumentVersionSerializer,
         responses={
@@ -2291,68 +1934,6 @@ class DocumentViewSet(
                 "is_root": version_doc.id == root_doc.id,
             },
         )
-
-
-class ChatStreamingSerializer(serializers.Serializer[dict[str, Any]]):
-    q = serializers.CharField(required=True, max_length=4000)
-    document_id = serializers.IntegerField(required=False, allow_null=True)
-
-
-@method_decorator(
-    [
-        ensure_csrf_cookie,
-        cache_control(no_cache=True),
-    ],
-    name="dispatch",
-)
-class ChatStreamingView(GenericAPIView[Any]):
-    permission_classes = (IsAuthenticated, ViewDocumentsPermissions)
-    serializer_class = ChatStreamingSerializer
-
-    def post(self, request, *args, **kwargs):
-        request.compress_exempt = True
-        ai_config = AIConfig()
-        if not ai_config.ai_enabled:
-            return HttpResponseBadRequest("AI is required for this feature")
-
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        question = serializer.validated_data["q"]
-
-        doc_id = serializer.validated_data.get("document_id")
-
-        if doc_id:
-            try:
-                document = Document.objects.get(id=doc_id)
-            except Document.DoesNotExist:
-                return HttpResponseBadRequest("Document not found")
-
-            if not has_perms_owner_aware(request.user, "view_document", document):
-                return HttpResponseForbidden("Insufficient permissions")
-
-            documents = Document.objects.filter(pk=document.pk)
-            unrestricted = False
-        else:
-            documents = Document.objects.filter(
-                id__in=permitted_document_ids(request.user),
-            )
-            unrestricted = user_is_unrestricted(request.user)
-
-        output_language = get_llm_output_language(
-            ai_config=ai_config,
-            user=request.user,
-        )
-
-        response = StreamingHttpResponse(
-            stream_chat_with_documents(
-                query_str=question,
-                documents=documents,
-                unrestricted=unrestricted,
-                output_language=output_language,
-            ),
-            content_type="text/event-stream",
-        )
-        return response
 
 
 @extend_schema_view(
@@ -3604,8 +3185,6 @@ class SearchAutoCompleteView(GenericAPIView[Any]):
                     "storage_paths": StoragePathSerializer(many=True),
                     "users": UserSerializer(many=True),
                     "groups": GroupSerializer(many=True),
-                    "mail_rules": MailRuleSerializer(many=True),
-                    "mail_accounts": MailAccountSerializer(many=True),
                     "workflows": WorkflowSerializer(many=True),
                     "custom_fields": CustomFieldSerializer(many=True),
                 },
@@ -3711,26 +3290,6 @@ class GlobalSearchView(PassUserMixin):
             else []
         )
         groups = groups[:OBJECT_LIMIT]
-        mail_rules = (
-            get_objects_for_user_owner_aware(
-                request.user,
-                "view_mailrule",
-                MailRule,
-            ).filter(name__icontains=query)
-            if request.user.has_perm("paperless_mail.view_mailrule")
-            else []
-        )
-        mail_rules = mail_rules[:OBJECT_LIMIT]
-        mail_accounts = (
-            get_objects_for_user_owner_aware(
-                request.user,
-                "view_mailaccount",
-                MailAccount,
-            ).filter(name__icontains=query)
-            if request.user.has_perm("paperless_mail.view_mailaccount")
-            else []
-        )
-        mail_accounts = mail_accounts[:OBJECT_LIMIT]
         workflows = (
             Workflow.objects.filter(name__icontains=query)
             if request.user.has_perm("documents.view_workflow")
@@ -3772,16 +3331,6 @@ class GlobalSearchView(PassUserMixin):
         )
         users_serializer = UserSerializer(users, many=True, context=context)
         groups_serializer = GroupSerializer(groups, many=True, context=context)
-        mail_rules_serializer = MailRuleSerializer(
-            mail_rules,
-            many=True,
-            context=context,
-        )
-        mail_accounts_serializer = MailAccountSerializer(
-            mail_accounts,
-            many=True,
-            context=context,
-        )
         workflows_serializer = WorkflowSerializer(workflows, many=True, context=context)
         custom_fields_serializer = CustomFieldSerializer(
             custom_fields,
@@ -3799,8 +3348,6 @@ class GlobalSearchView(PassUserMixin):
                 + len(storage_paths)
                 + len(users)
                 + len(groups)
-                + len(mail_rules)
-                + len(mail_accounts)
                 + len(workflows)
                 + len(custom_fields),
                 "documents": docs_serializer.data,
@@ -3811,8 +3358,6 @@ class GlobalSearchView(PassUserMixin):
                 "storage_paths": storage_paths_serializer.data,
                 "users": users_serializer.data,
                 "groups": groups_serializer.data,
-                "mail_rules": mail_rules_serializer.data,
-                "mail_accounts": mail_accounts_serializer.data,
                 "workflows": workflows_serializer.data,
                 "custom_fields": custom_fields_serializer.data,
             },
@@ -4118,28 +3663,6 @@ class UiSettingsView(GenericAPIView[Any]):
 
         ui_settings["auditlog_enabled"] = settings.AUDIT_LOG_ENABLED
 
-        ui_settings["remote_ocr"] = {
-            "configured": RemoteEngineConfig.from_app_config().engine_is_valid(),
-            "mode": RemoteOCRConfig().remote_ocr_mode,
-        }
-
-        if settings.GMAIL_OAUTH_ENABLED or settings.OUTLOOK_OAUTH_ENABLED:
-            manager = PaperlessMailOAuth2Manager()
-            if settings.GMAIL_OAUTH_ENABLED:
-                ui_settings["gmail_oauth_url"] = manager.get_gmail_authorization_url()
-                request.session["oauth_state"] = manager.state
-            if settings.OUTLOOK_OAUTH_ENABLED:
-                ui_settings["outlook_oauth_url"] = (
-                    manager.get_outlook_authorization_url()
-                )
-                request.session["oauth_state"] = manager.state
-
-        ui_settings["email_enabled"] = settings.EMAIL_ENABLED
-
-        ai_config = AIConfig()
-
-        ui_settings["ai_enabled"] = ai_config.ai_enabled
-
         user_resp = {
             "id": user.id,
             "username": user.username,
@@ -4326,7 +3849,6 @@ class TasksViewSet(ReadOnlyModelViewSet[PaperlessTask]):
     # v9 backwards compat: maps old task_name values to new task_type values
     _V9_TASK_NAME_TO_TYPE = {
         "check_sanity": PaperlessTask.TaskType.SANITY_CHECK,
-        "llmindex_update": PaperlessTask.TaskType.LLM_INDEX,
     }
 
     # v9 backwards compat: maps old "type" query param values to new TriggerSource.
@@ -4334,7 +3856,6 @@ class TasksViewSet(ReadOnlyModelViewSet[PaperlessTask]):
     _V9_TYPE_TO_TRIGGER_SOURCES = {
         "auto_task": [
             PaperlessTask.TriggerSource.SYSTEM,
-            PaperlessTask.TriggerSource.EMAIL_CONSUME,
             PaperlessTask.TriggerSource.FOLDER_CONSUME,
         ],
         "scheduled_task": [PaperlessTask.TriggerSource.SCHEDULED],
@@ -4348,7 +3869,6 @@ class TasksViewSet(ReadOnlyModelViewSet[PaperlessTask]):
     _RUNNABLE_TASKS = {
         PaperlessTask.TaskType.TRAIN_CLASSIFIER: (train_classifier, {}),
         PaperlessTask.TaskType.SANITY_CHECK: (sanity_check, {"raise_on_error": False}),
-        PaperlessTask.TaskType.LLM_INDEX: (llmindex_index, {"rebuild": False}),
     }
     _STATUS_COUNT_EXCLUDED_FILTERS = frozenset({"status", "is_complete"})
 
@@ -5321,35 +4841,6 @@ class SystemStatusView(PassUserMixin):
             last_sanity_check.date_done if last_sanity_check else None
         )
 
-        ai_config = AIConfig()
-        if not ai_config.llm_index_enabled:
-            llmindex_status = "DISABLED"
-            llmindex_error = None
-            llmindex_last_modified = None
-        else:
-            last_llmindex_update = (
-                PaperlessTask.objects.filter(
-                    task_type=PaperlessTask.TaskType.LLM_INDEX,
-                )
-                .order_by("-date_done")
-                .first()
-            )
-            llmindex_status = "OK"
-            llmindex_error = None
-            if last_llmindex_update is None:
-                llmindex_status = "WARNING"
-                llmindex_error = "No LLM index update tasks found"
-            elif last_llmindex_update.status == PaperlessTask.Status.FAILURE:
-                llmindex_status = "ERROR"
-                llmindex_error = (
-                    last_llmindex_update.result_data.get("error_message")
-                    if last_llmindex_update.result_data
-                    else None
-                )
-            llmindex_last_modified = (
-                last_llmindex_update.date_done if last_llmindex_update else None
-            )
-
         summary_cutoff = timezone.now() - timedelta(days=self.TASK_SUMMARY_DAYS)
         task_summary_agg = PaperlessTask.objects.filter(
             date_created__gte=summary_cutoff,
@@ -5410,9 +4901,6 @@ class SystemStatusView(PassUserMixin):
                     "sanity_check_status": sanity_check_status,
                     "sanity_check_last_run": sanity_check_last_run,
                     "sanity_check_error": sanity_check_error,
-                    "llmindex_status": llmindex_status,
-                    "llmindex_last_modified": llmindex_last_modified,
-                    "llmindex_error": llmindex_error,
                     "summary": task_summary,
                 },
             },

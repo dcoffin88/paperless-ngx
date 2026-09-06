@@ -109,9 +109,6 @@ export class WorkflowsComponent
         if (a.webhook) {
           a.webhook.id = null
         }
-        if (a.email) {
-          a.email.id = null
-        }
         return a
       }),
     ]

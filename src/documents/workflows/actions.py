@@ -8,13 +8,10 @@ from django.utils import timezone
 
 from documents.data_models import ConsumableDocument
 from documents.data_models import DocumentMetadataOverrides
-from documents.mail import EmailAttachment
-from documents.mail import send_email
 from documents.models import Correspondent
 from documents.models import Document
 from documents.models import DocumentType
 from documents.models import WorkflowAction
-from documents.models import WorkflowTrigger
 from documents.plugins.base import StopConsumeTaskError
 from documents.signals import document_consumption_finished
 from documents.templating.workflows import parse_w_workflow_placeholders
@@ -81,109 +78,6 @@ def build_workflow_action_context(
         "created": overrides.created if overrides else None,
         "id": "",
     }
-
-
-def execute_email_action(
-    action: WorkflowAction,
-    document: Document | ConsumableDocument,
-    context: dict,
-    logging_group,
-    original_file: Path,
-    trigger_type: WorkflowTrigger.WorkflowTriggerType,
-) -> None:
-    """
-    Execute an email action for a workflow.
-    """
-
-    if not settings.EMAIL_ENABLED:
-        logger.error(
-            "Email backend has not been configured, cannot send email notifications",
-            extra={"group": logging_group},
-        )
-        return
-
-    subject = (
-        parse_w_workflow_placeholders(
-            action.email.subject,
-            context["correspondent"],
-            context["document_type"],
-            context["owner_username"],
-            context["added"],
-            context["filename"],
-            context["current_filename"],
-            context["created"],
-            context["title"],
-            context["doc_url"],
-            context["id"],
-        )
-        if action.email.subject
-        else ""
-    )
-    body = (
-        parse_w_workflow_placeholders(
-            action.email.body,
-            context["correspondent"],
-            context["document_type"],
-            context["owner_username"],
-            context["added"],
-            context["filename"],
-            context["current_filename"],
-            context["created"],
-            context["title"],
-            context["doc_url"],
-            context["id"],
-        )
-        if action.email.body
-        else ""
-    )
-
-    try:
-        attachments: list[EmailAttachment] = []
-        if action.email.include_document:
-            attachment: EmailAttachment | None = None
-            if trigger_type in [
-                WorkflowTrigger.WorkflowTriggerType.DOCUMENT_UPDATED,
-                WorkflowTrigger.WorkflowTriggerType.SCHEDULED,
-            ] and isinstance(document, Document):
-                friendly_name = (
-                    Path(context["current_filename"]).name
-                    if context["current_filename"]
-                    else document.source_path.name
-                )
-                attachment = EmailAttachment(
-                    path=document.source_path,
-                    mime_type=document.mime_type,
-                    friendly_name=friendly_name,
-                )
-            elif original_file:
-                friendly_name = (
-                    Path(context["current_filename"]).name
-                    if context["current_filename"]
-                    else original_file.name
-                )
-                attachment = EmailAttachment(
-                    path=original_file,
-                    mime_type=document.mime_type,
-                    friendly_name=friendly_name,
-                )
-            if attachment:
-                attachments = [attachment]
-
-        n_messages = send_email(
-            subject=subject,
-            body=body,
-            to=action.email.to.split(","),
-            attachments=attachments,
-        )
-        logger.debug(
-            f"Sent {n_messages} notification email(s) to {action.email.to}",
-            extra={"group": logging_group},
-        )
-    except Exception as e:
-        logger.exception(
-            f"Error occurred sending notification email: {e}",
-            extra={"group": logging_group},
-        )
 
 
 def execute_webhook_action(

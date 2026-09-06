@@ -46,24 +46,10 @@ class SuggestionCacheData:
 CLASSIFIER_VERSION_KEY: Final[str] = "classifier_version"
 CLASSIFIER_HASH_KEY: Final[str] = "classifier_hash"
 CLASSIFIER_MODIFIED_KEY: Final[str] = "classifier_modified"
-# Marker distinguishing LLM suggestions from classifier-generated ones (whose
-# FORMAT_VERSION lives in a much lower range - see DocumentClassifier). Bump
-# this whenever cached suggestions must not be reused, including changes to
-# their shape or interpretation, so a previous release's result cannot leak
-# incompatible or obsolete behavior into the new one:
-#   1000 - initial LLM suggestions cache (flat lists of resolved object ids
-#          per taxonomy field)
-#   1001 - suggestions reshaped to {"existing_ids": [...], "new_names":
-#          [...]} per taxonomy field (#13676)
-#   1002 - names are always generated and optional candidate mappings are
-#          validated separately, so candidate-anchored 1001 results are stale
-LLM_CACHE_CLASSIFIER_VERSION: Final[int] = 1002
 
 CACHE_1_MINUTE: Final[int] = 60
 CACHE_5_MINUTES: Final[int] = 5 * CACHE_1_MINUTE
 CACHE_50_MINUTES: Final[int] = 50 * CACHE_1_MINUTE
-# Deliberately longer than any entry it names
-LLM_CACHE_GENERATION_TIMEOUT: Final[int] = 2 * CACHE_50_MINUTES
 
 read_cache = caches["read-cache"]
 
@@ -222,95 +208,6 @@ def invalidate_suggestions_cache(document_id: int) -> None:
     cache.delete(get_suggestion_cache_key(document_id))
 
 
-def _llm_generation_key(document_id: int) -> str:
-    return f"{get_suggestion_cache_key(document_id)}_llm_generation"
-
-
-def _llm_variant_key(document_id: int, backend: str) -> str:
-    """Cache key for one LLM configuration and permission scope.
-
-    ``backend`` identifies the variant - model, endpoint, output language and
-    requesting user.
-
-    Generating the token on first use lets invalidate_llm_suggestions_cache()
-    be no-op for documents that never had AI suggestions.
-    """
-    generation_key = _llm_generation_key(document_id)
-    generation = cache.get_or_set(
-        generation_key,
-        lambda: uuid.uuid4().hex,
-        timeout=LLM_CACHE_GENERATION_TIMEOUT,
-    )
-    cache.touch(generation_key, LLM_CACHE_GENERATION_TIMEOUT)
-    backend_hash = hashlib.sha256(backend.encode()).hexdigest()[:16]
-    return f"{get_suggestion_cache_key(document_id)}_llm_{generation}_{backend_hash}"
-
-
-def get_llm_suggestion_cache(
-    document_id: int,
-    backend: str,
-) -> SuggestionCacheData | None:
-    data: SuggestionCacheData = cache.get(_llm_variant_key(document_id, backend))
-
-    if (
-        data
-        and data.classifier_version == LLM_CACHE_CLASSIFIER_VERSION
-        and data.classifier_hash == backend
-    ):
-        return data
-
-    return None
-
-
-def set_llm_suggestions_cache(
-    document_id: int,
-    suggestions: dict,
-    *,
-    backend: str,
-    timeout: int = CACHE_50_MINUTES,
-) -> None:
-    """
-    Cache LLM-generated suggestions using a backend-specific identifier
-    (e.g. 'openai-like:gpt-4').
-    """
-    cache.set(
-        _llm_variant_key(document_id, backend),
-        SuggestionCacheData(
-            classifier_version=LLM_CACHE_CLASSIFIER_VERSION,
-            classifier_hash=backend,
-            suggestions=suggestions,
-        ),
-        timeout,
-    )
-
-
-def refresh_llm_suggestions_cache(
-    document_id: int,
-    backend: str,
-    *,
-    timeout: int = CACHE_50_MINUTES,
-) -> None:
-    """
-    Refreshes the expiration of one cached LLM suggestion variant.
-    """
-    cache.touch(_llm_variant_key(document_id, backend), timeout)
-
-
-def invalidate_llm_suggestions_cache(
-    document_id: int,
-) -> None:
-    """
-    Invalidate every LLM suggestion variant for a document.
-    """
-    generation_key = _llm_generation_key(document_id)
-    if cache.get(generation_key) is not None:
-        cache.set(
-            generation_key,
-            uuid.uuid4().hex,
-            timeout=LLM_CACHE_GENERATION_TIMEOUT,
-        )
-
-
 def get_metadata_cache_key(document_id: int) -> str:
     """
     Returns the basic key for a document's metadata
@@ -409,4 +306,3 @@ def clear_document_caches(document_id: int) -> None:
             get_thumbnail_modified_key(document_id),
         ],
     )
-    invalidate_llm_suggestions_cache(document_id)

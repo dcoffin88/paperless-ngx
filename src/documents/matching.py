@@ -300,16 +300,6 @@ def consumable_document_matches_workflow(
         )
         trigger_matched = False
 
-    # Document mail rule vs trigger mail rule
-    if (
-        trigger.filter_mailrule is not None
-        and document.mailrule_id != trigger.filter_mailrule.pk
-    ):
-        reason = (
-            f"Document mail rule {document.mailrule_id} != {trigger.filter_mailrule.pk}"
-        )
-        trigger_matched = False
-
     # Document filename vs trigger filename
     if (
         trigger.filter_filename is not None
@@ -649,7 +639,6 @@ def document_matches_workflow(
             type=trigger_type,
         )
         .select_related(
-            "filter_mailrule",
             "filter_has_document_type",
             "filter_has_correspondent",
             "filter_has_storage_path",

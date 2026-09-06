@@ -96,15 +96,6 @@ MODEL_FILE = get_path_from_env(
     "PAPERLESS_MODEL_FILE",
     DATA_DIR / "classification_model.pickle",
 )
-LLM_INDEX_DIR = DATA_DIR / "llm_index"
-LLM_INDEX_LOCK = LLM_INDEX_DIR / "index.lock"
-# Cross-process read/write lock guarding the LLM index compaction/migration
-# file swap. Readers hold it shared; the swap takes it exclusively so it never
-# runs while a reader connection is open. Must be a SQLite (.db) file.
-LLM_INDEX_RWLOCK = LLM_INDEX_DIR / "llmindex.rwlock.db"
-# Seconds the compaction swap waits for active readers to drain before skipping
-# this cycle (it is a maintenance operation; the next run retries).
-LLM_INDEX_COMPACTION_LOCK_TIMEOUT = 30
 
 LOGGING_DIR = get_path_from_env("PAPERLESS_LOGGING_DIR", DATA_DIR / "log")
 
@@ -136,7 +127,6 @@ INSTALLED_APPS = [
     "django_extensions",
     "paperless",
     "documents.apps.DocumentsConfig",
-    "paperless_mail.apps.PaperlessMailConfig",
     "django.contrib.admin",
     "rest_framework",
     "rest_framework.authtoken",
@@ -198,7 +188,7 @@ MIDDLEWARE = [
 if get_bool_from_env("PAPERLESS_ENABLE_COMPRESSION", "yes"):  # pragma: no cover
     MIDDLEWARE.insert(0, "compression_middleware.middleware.CompressionMiddleware")
 
-# Workaround to not compress streaming responses (e.g. chat).
+# Workaround to not compress streaming responses.
 # See https://github.com/friedelwolff/django-compression-middleware/pull/7
 original_process_response = CompressionMiddleware.process_response
 
@@ -660,8 +650,6 @@ LOGGING = {
     "root": {"handlers": ["console"]},
     "loggers": {
         "paperless": {"handlers": ["file_paperless"], "level": "DEBUG"},
-        "paperless_mail": {"handlers": ["file_mail"], "level": "DEBUG"},
-        "paperless_ai": {"handlers": ["file_paperless"], "level": "DEBUG"},
         "ocrmypdf": {"handlers": ["file_paperless"], "level": "INFO"},
         "celery": {"handlers": ["file_celery"], "level": "DEBUG"},
         "kombu": {"handlers": ["file_celery"], "level": "DEBUG"},
@@ -850,64 +838,6 @@ CONSUMER_IGNORE_DIRS = list(
 
 CONSUMER_SUBDIRS_AS_TAGS = get_bool_from_env("PAPERLESS_CONSUMER_SUBDIRS_AS_TAGS")
 
-CONSUMER_ENABLE_BARCODES: Final[bool] = get_bool_from_env(
-    "PAPERLESS_CONSUMER_ENABLE_BARCODES",
-)
-
-CONSUMER_BARCODE_TIFF_SUPPORT: Final[bool] = get_bool_from_env(
-    "PAPERLESS_CONSUMER_BARCODE_TIFF_SUPPORT",
-)
-
-CONSUMER_BARCODE_STRING: Final[str] = os.getenv(
-    "PAPERLESS_CONSUMER_BARCODE_STRING",
-    "PATCHT",
-)
-
-CONSUMER_ENABLE_ASN_BARCODE: Final[bool] = get_bool_from_env(
-    "PAPERLESS_CONSUMER_ENABLE_ASN_BARCODE",
-)
-
-CONSUMER_ASN_BARCODE_PREFIX: Final[str] = os.getenv(
-    "PAPERLESS_CONSUMER_ASN_BARCODE_PREFIX",
-    "ASN",
-)
-
-CONSUMER_BARCODE_UPSCALE: Final[float] = get_float_from_env(
-    "PAPERLESS_CONSUMER_BARCODE_UPSCALE",
-    0.0,
-)
-
-CONSUMER_BARCODE_DPI: Final[int] = get_int_from_env(
-    "PAPERLESS_CONSUMER_BARCODE_DPI",
-    300,
-)
-
-CONSUMER_BARCODE_MAX_PAGES: Final[int] = get_int_from_env(
-    "PAPERLESS_CONSUMER_BARCODE_MAX_PAGES",
-    0,
-)
-
-CONSUMER_BARCODE_RETAIN_SPLIT_PAGES = get_bool_from_env(
-    "PAPERLESS_CONSUMER_BARCODE_RETAIN_SPLIT_PAGES",
-)
-
-CONSUMER_ENABLE_TAG_BARCODE: Final[bool] = get_bool_from_env(
-    "PAPERLESS_CONSUMER_ENABLE_TAG_BARCODE",
-)
-
-CONSUMER_TAG_BARCODE_MAPPING = dict(
-    json.loads(
-        os.getenv(
-            "PAPERLESS_CONSUMER_TAG_BARCODE_MAPPING",
-            '{"TAG:(.*)": "\\\\g<1>"}',
-        ),
-    ),
-)
-
-CONSUMER_TAG_BARCODE_SPLIT: Final[bool] = get_bool_from_env(
-    "PAPERLESS_CONSUMER_TAG_BARCODE_SPLIT",
-)
-
 CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED: Final[bool] = get_bool_from_env(
     "PAPERLESS_CONSUMER_ENABLE_COLLATE_DOUBLE_SIDED",
 )
@@ -991,7 +921,7 @@ GS_BINARY = os.getenv("PAPERLESS_GS_BINARY", "gs")
 # Fallback layout for .eml consumption
 EMAIL_PARSE_DEFAULT_LAYOUT = get_int_from_env(
     "PAPERLESS_EMAIL_PARSE_DEFAULT_LAYOUT",
-    1,  # MailRule.PdfLayout.TEXT_HTML but that can't be imported here
+    1,  # PdfLayout.TEXT_HTML but that can't be imported here
 )
 
 # Trigger a script after every successful document consumption?
@@ -1206,53 +1136,3 @@ WEBHOOKS_ALLOW_INTERNAL_REQUESTS = get_bool_from_env(
     "true",
 )
 
-###############################################################################
-# Remote Parser                                                               #
-###############################################################################
-REMOTE_OCR_ENGINE = os.getenv("PAPERLESS_REMOTE_OCR_ENGINE")
-REMOTE_OCR_API_KEY = os.getenv("PAPERLESS_REMOTE_OCR_API_KEY")
-REMOTE_OCR_ENDPOINT = os.getenv("PAPERLESS_REMOTE_OCR_ENDPOINT")
-REMOTE_OCR_MODE = get_choice_from_env(
-    "PAPERLESS_REMOTE_OCR_MODE",
-    {"always", "workflow_only"},
-    default="always",
-)
-REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS = get_bool_from_env(
-    "PAPERLESS_REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS",
-    "true",
-)
-
-################################################################################
-# AI Settings                                                                  #
-################################################################################
-AI_ENABLED = get_bool_from_env("PAPERLESS_AI_ENABLED", "NO")
-LLM_EMBEDDING_BACKEND = get_choice_from_env(
-    "PAPERLESS_AI_LLM_EMBEDDING_BACKEND",
-    {"huggingface", "openai-like", "ollama"},
-)
-LLM_EMBEDDING_MODEL = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_MODEL")
-LLM_EMBEDDING_ENDPOINT = os.getenv("PAPERLESS_AI_LLM_EMBEDDING_ENDPOINT")
-LLM_EMBEDDING_CHUNK_SIZE = get_int_from_env(
-    "PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE",
-    1024,
-)
-if LLM_EMBEDDING_CHUNK_SIZE < 1:
-    raise ImproperlyConfigured("PAPERLESS_AI_LLM_EMBEDDING_CHUNK_SIZE must be >= 1")
-LLM_CONTEXT_SIZE = get_int_from_env("PAPERLESS_AI_LLM_CONTEXT_SIZE", 8192)
-if LLM_CONTEXT_SIZE < 1:
-    raise ImproperlyConfigured("PAPERLESS_AI_LLM_CONTEXT_SIZE must be >= 1")
-LLM_REQUEST_TIMEOUT = get_int_from_env("PAPERLESS_AI_LLM_REQUEST_TIMEOUT", 120)
-if LLM_REQUEST_TIMEOUT < 1:
-    raise ImproperlyConfigured("PAPERLESS_AI_LLM_REQUEST_TIMEOUT must be >= 1")
-LLM_BACKEND = get_choice_from_env(
-    "PAPERLESS_AI_LLM_BACKEND",
-    {"ollama", "openai-like"},
-)
-LLM_MODEL = os.getenv("PAPERLESS_AI_LLM_MODEL")
-LLM_API_KEY = os.getenv("PAPERLESS_AI_LLM_API_KEY")
-LLM_ENDPOINT = os.getenv("PAPERLESS_AI_LLM_ENDPOINT")
-LLM_OUTPUT_LANGUAGE = os.getenv("PAPERLESS_AI_LLM_OUTPUT_LANGUAGE")
-LLM_ALLOW_INTERNAL_ENDPOINTS = get_bool_from_env(
-    "PAPERLESS_AI_LLM_ALLOW_INTERNAL_ENDPOINTS",
-    "true",
-)

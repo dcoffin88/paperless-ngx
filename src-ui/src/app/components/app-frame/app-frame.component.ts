@@ -44,7 +44,6 @@ import { SettingsService } from 'src/app/services/settings.service'
 import { TasksService } from 'src/app/services/tasks.service'
 import { ToastService } from 'src/app/services/toast.service'
 import { environment } from 'src/environments/environment'
-import { ChatComponent } from '../chat/chat/chat.component'
 import { BrandMarkComponent } from '../common/logo/brand-mark/brand-mark.component'
 import { LogoComponent } from '../common/logo/logo.component'
 import { ProfileEditDialogComponent } from '../common/profile-edit-dialog/profile-edit-dialog.component'
@@ -66,7 +65,6 @@ const SCROLL_THRESHOLD = 16
     DocumentTitlePipe,
     IfPermissionsDirective,
     ToastsDropdownComponent,
-    ChatComponent,
     RouterModule,
     NgClass,
     NgbDropdownModule,
@@ -114,9 +112,6 @@ export class AppFrameComponent
     this.settingsService.getSignal<CollapsibleSection[]>(
       SETTINGS_KEYS.ATTRIBUTES_SECTIONS_COLLAPSED
     )
-  private readonly aiEnabledSetting = this.settingsService.getSignal<boolean>(
-    SETTINGS_KEYS.AI_ENABLED
-  )
   private readonly sidebarViewsShowCountSetting =
     this.settingsService.getSignal<boolean>(
       SETTINGS_KEYS.SIDEBAR_VIEWS_SHOW_COUNT
@@ -320,10 +315,6 @@ export class AppFrameComponent
           console.warn(error)
         },
       })
-  }
-
-  get aiEnabled(): boolean {
-    return this.aiEnabledSetting()
   }
 
   @HostListener('window:resize')

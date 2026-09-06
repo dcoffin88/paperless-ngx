@@ -162,24 +162,4 @@ describe('ConfigComponent', () => {
     component.resetOption('barcodes_enabled')
     expect(component.configForm.get('barcodes_enabled').value).toBeNull()
   })
-
-  it('should group options into sections within a category, or not', () => {
-    const sections = component.getCategorySections(ConfigCategory.OCR)
-    expect(sections).toEqual([null, ConfigSection.RemoteOCR])
-    expect(
-      component
-        .getCategoryOptions(ConfigCategory.OCR)
-        .map((option) => option.key)
-    ).toContain('output_type')
-    expect(
-      component
-        .getCategoryOptions(ConfigCategory.OCR, ConfigSection.RemoteOCR)
-        .map((option) => option.key)
-    ).toEqual([
-      'remote_ocr_engine',
-      'remote_ocr_api_key',
-      'remote_ocr_endpoint',
-      'remote_ocr_mode',
-    ])
-  })
 })

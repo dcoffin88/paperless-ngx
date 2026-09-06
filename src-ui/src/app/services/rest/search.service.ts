@@ -6,8 +6,6 @@ import { CustomField } from 'src/app/data/custom-field'
 import { Document } from 'src/app/data/document'
 import { DocumentType } from 'src/app/data/document-type'
 import { Group } from 'src/app/data/group'
-import { MailAccount } from 'src/app/data/mail-account'
-import { MailRule } from 'src/app/data/mail-rule'
 import { SavedView } from 'src/app/data/saved-view'
 import { StoragePath } from 'src/app/data/storage-path'
 import { Tag } from 'src/app/data/tag'
@@ -27,8 +25,6 @@ export interface GlobalSearchResult {
   tags: Tag[]
   users: User[]
   groups: Group[]
-  mail_accounts: MailAccount[]
-  mail_rules: MailRule[]
   custom_fields: CustomField[]
   workflows: Workflow[]
 }

@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -79,17 +78,6 @@ def parse_beat_schedule() -> dict:
     schedule = {}
     tasks = [
         {
-            "name": "Check all e-mail accounts",
-            "env_key": "PAPERLESS_EMAIL_TASK_CRON",
-            # Default every ten minutes
-            "env_default": "*/10 * * * *",
-            "task": "paperless_mail.tasks.process_mail_accounts",
-            "options": {
-                # 1 minute before default schedule sends again
-                "expires": 9.0 * 60.0,
-            },
-        },
-        {
             "name": "Train the classifier",
             "env_key": "PAPERLESS_TRAIN_TASK_CRON",
             # Default hourly at 5 minutes past the hour
@@ -145,17 +133,6 @@ def parse_beat_schedule() -> dict:
             },
         },
         {
-            "name": "Rebuild LLM index",
-            "env_key": "PAPERLESS_LLM_INDEX_TASK_CRON",
-            # Default daily at 02:10
-            "env_default": "10 2 * * *",
-            "task": "documents.tasks.llmindex_index",
-            "options": {
-                # 1 hour before default schedule sends again
-                "expires": 23.0 * 60.0 * 60.0,
-            },
-        },
-        {
             "name": "Cleanup expired share link bundles",
             "env_key": "PAPERLESS_SHARE_LINK_BUNDLE_CLEANUP_CRON",
             # Default daily at 02:00
@@ -173,15 +150,6 @@ def parse_beat_schedule() -> dict:
         # Don't add disabled tasks to the schedule
         if value == "disable":
             continue
-        if (
-            task["env_key"] == "PAPERLESS_EMAIL_TASK_CRON"
-            and task["env_key"] not in os.environ
-        ):
-            # Spread default polling across the ten-minute interval.
-            secret = os.environ["PAPERLESS_SECRET_KEY"].encode()
-            offset = int.from_bytes(sha256(secret).digest()) % 10
-            minutes = ",".join(str(minute) for minute in range(offset, 60, 10))
-            value = f"{minutes} * * * *"
         # I find https://crontab.guru/ super helpful
         # crontab(5) format
         #   - five time-and-date fields

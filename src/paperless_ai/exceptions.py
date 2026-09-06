@@ -1,2 +1,0 @@
-class LLMTimeoutError(Exception):
-    pass

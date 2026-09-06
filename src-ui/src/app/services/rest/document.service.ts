@@ -349,13 +349,9 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     })
   }
 
-  reprocessDocuments(
-    selection: DocumentSelectionQuery,
-    remoteOcr: boolean = false
-  ) {
+  reprocessDocuments(selection: DocumentSelectionQuery) {
     return this.http.post(this.getResourceUrl(null, 'reprocess'), {
       ...selection,
-      remote_ocr: remoteOcr,
     })
   }
 
@@ -420,12 +416,6 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     )
   }
 
-  getAiSuggestions(id: number): Observable<DocumentSuggestions> {
-    return this.http.get<DocumentSuggestions>(
-      this.getResourceUrl(id, 'ai_suggestions')
-    )
-  }
-
   getHistory(id: number): Observable<AuditLogEntry[]> {
     return this.http.get<AuditLogEntry[]>(this.getResourceUrl(id, 'history'))
   }
@@ -454,19 +444,4 @@ export class DocumentService extends AbstractPaperlessService<Document> {
     return this._searchQuery
   }
 
-  emailDocuments(
-    documentIds: number[],
-    addresses: string,
-    subject: string,
-    message: string,
-    useArchiveVersion: boolean
-  ): Observable<any> {
-    return this.http.post(this.getResourceUrl(null, 'email'), {
-      documents: documentIds,
-      addresses: addresses,
-      subject: subject,
-      message: message,
-      use_archive_version: useArchiveVersion,
-    })
-  }
 }

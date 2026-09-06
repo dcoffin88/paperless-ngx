@@ -18,7 +18,6 @@ export const SAVED_VIEW_ICONS = [
     icon: 'card-checklist',
   },
   { id: 'cash', name: $localize`Cash`, icon: 'cash' },
-  { id: 'chat-left-text', name: $localize`Chat`, icon: 'chat-left-text' },
   { id: 'check-circle', name: $localize`Check`, icon: 'check-circle' },
   { id: 'clipboard', name: $localize`Clipboard`, icon: 'clipboard' },
   { id: 'clock-history', name: $localize`Clock`, icon: 'clock-history' },
@@ -84,6 +83,5 @@ export const SAVED_VIEW_ICONS = [
   { id: 'tags', name: $localize`Tags`, icon: 'tags' },
   { id: 'telephone', name: $localize`Telephone`, icon: 'telephone' },
   { id: 'truck', name: $localize`Truck`, icon: 'truck' },
-  { id: 'upc-scan', name: $localize`Barcode`, icon: 'upc-scan' },
   { id: 'wallet2', name: $localize`Wallet`, icon: 'wallet2' },
 ]

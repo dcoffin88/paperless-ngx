@@ -432,7 +432,7 @@ def get_objects_for_user_owner_aware(
     Most queryset-filtering call sites have migrated onto
     ``PermittedObjectsFilter``/``permitted_object_ids()``, but this function
     is kept because production callers still remain. Several callers remain
-    across ``documents/``, ``paperless_mail/``, and ``paperless_ai/`` --
+    across the documents app --
     grep for this function name before removing it.
     """
     manager = (
@@ -459,7 +459,7 @@ def has_perms_owner_aware(user, perms, obj):
     The queryset-filtering side of this migrated onto
     ``PermittedObjectsFilter``/``permitted_object_ids()``, but this
     single-object check still has many production callers. Several callers
-    remain across ``documents/``, ``paperless_mail/``, and ``paperless_ai/``
+    remain across the documents app
     -- grep for this function name before removing it.
     """
     checker = ObjectPermissionChecker(user)

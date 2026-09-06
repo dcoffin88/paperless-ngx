@@ -56,7 +56,6 @@ from documents.models import Tag
 from documents.models import UiSettings
 from documents.models import Workflow
 from documents.models import WorkflowAction
-from documents.models import WorkflowActionEmail
 from documents.models import WorkflowActionWebhook
 from documents.models import WorkflowTrigger
 from documents.settings import EXPORTER_ARCHIVE_NAME
@@ -66,8 +65,6 @@ from documents.settings import EXPORTER_THUMBNAIL_NAME
 from documents.utils import QuerySetStream
 from paperless import version
 from paperless.models import ApplicationConfiguration
-from paperless_mail.models import MailAccount
-from paperless_mail.models import MailRule
 
 
 def serialize_queryset_batched(
@@ -329,8 +326,6 @@ class Command(CryptMixin, PaperlessCommand):
             "tags": Tag.objects.all(),
             "document_types": DocumentType.objects.all(),
             "storage_paths": StoragePath.objects.all(),
-            "mail_accounts": MailAccount.objects.all(),
-            "mail_rules": MailRule.objects.all(),
             "saved_views": SavedView.objects.all(),
             "saved_view_filter_rules": SavedViewFilterRule.objects.all(),
             "groups": Group.objects.all(),
@@ -348,7 +343,6 @@ class Command(CryptMixin, PaperlessCommand):
             "group_object_permissions": GroupObjectPermission.objects.all(),
             "workflow_triggers": WorkflowTrigger.objects.all(),
             "workflow_actions": WorkflowAction.objects.all(),
-            "workflow_email_actions": WorkflowActionEmail.objects.all(),
             "workflow_webhook_actions": WorkflowActionWebhook.objects.all(),
             "workflows": Workflow.objects.all(),
             "custom_fields": CustomField.objects.all(),
@@ -376,7 +370,7 @@ class Command(CryptMixin, PaperlessCommand):
         # Crypto setup before streaming begins
         if self.passphrase:
             self.setup_crypto(passphrase=self.passphrase)
-        elif MailAccount.objects.count() > 0 or SocialToken.objects.count() > 0:
+        elif SocialToken.objects.count() > 0:
             self.stdout.write(
                 self.style.NOTICE(
                     "No passphrase was given, sensitive fields will be in plaintext",

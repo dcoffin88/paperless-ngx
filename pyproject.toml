@@ -49,32 +49,21 @@ dependencies = [
   "imap-tools>=1.14,<1.16",
   "jinja2~=3.1.6",
   "langdetect~=1.0.9",
-  "llama-index-core>=0.14.23",
-  "llama-index-embeddings-huggingface>=0.6.1",
-  "llama-index-embeddings-ollama>=0.9",
-  "llama-index-embeddings-openai-like>=0.2.2",
-  "llama-index-llms-ollama>=0.9.1",
-  "llama-index-llms-openai-like>=0.7.1",
   "nltk~=3.10.0",
-  "ocrmypdf>=17.7,<17.12",
-  "openai>=2.48",
+  "ocrmypdf~=17.7,<17.12",
   "pathvalidate~=3.3.1",
   "pdf2image~=1.17.0",
   "python-dateutil~=2.9.0",
   "python-dotenv~=1.2.1",
-  "python-gnupg~=0.5.4",
   "python-ipware~=3.0.0",
   "python-magic~=0.4.27",
   "rapidfuzz~=3.14.5",
   "redis[hiredis]~=6.4.0",
   "regex>=2026.7.19",
   "scikit-learn~=1.9.0",
-  "sentence-transformers>=5.6.1",
   "setproctitle~=1.3.4",
-  "sqlite-vec==0.1.9",
   "tantivy~=0.26.0",
   "tika-client[httpx]~=1.0",
-  "torch~=2.13.0",
   "watchfiles>=1.2",
   "whitenoise~=6.11",
   "zxing-cpp~=3.1.0",
@@ -161,14 +150,6 @@ psycopg-c = [
   { url = "https://github.com/paperless-ngx/builder/releases/download/psycopg-trixie-3.3.4/psycopg_c-3.3.4-cp314-cp314-linux_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.14'" },
   { url = "https://github.com/paperless-ngx/builder/releases/download/psycopg-trixie-3.3.4/psycopg_c-3.3.4-cp314-cp314-linux_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version == '3.14'" },
 ]
-torch = [
-  { index = "pytorch-cpu" },
-]
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
 [tool.ruff]
 target-version = "py311"
 line-length = 88
@@ -249,8 +230,8 @@ isort.force-single-line = true
 [tool.codespell]
 ignore-words-list = "criterias,afterall,valeu,ureue,equest,ure,assertIn,Oktober,commitish,NIN,nin"
 skip = """\
-  src-ui/src/locale/*,src-ui/pnpm-lock.yaml,src-ui/e2e/*,src/paperless_mail/tests/samples/*,src/paperless/tests/samples\
-  /mail/*,src/documents/tests/samples/*,*.po,*.json\
+  src-ui/src/locale/*,src-ui/pnpm-lock.yaml,src-ui/e2e/*,src/paperless/tests/samples,\
+  src/documents/tests/samples/*,*.po,*.json\
   """
 write-changes = true
 
@@ -315,8 +296,6 @@ strict_xfail = true
 testpaths = [
   "src/documents/tests/",
   "src/paperless/tests/",
-  "src/paperless_mail/tests/",
-  "src/paperless_ai/tests",
 ]
 
 [tool.pytest_env]

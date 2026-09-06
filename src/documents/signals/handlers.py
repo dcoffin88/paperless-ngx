@@ -31,8 +31,6 @@ from rest_framework import serializers
 
 from documents import matching
 from documents.caching import clear_document_caches
-from documents.caching import invalidate_llm_suggestions_cache
-from documents.caching import invalidate_suggestions_cache
 from documents.data_models import ConsumableDocument
 from documents.file_handling import create_source_path_directory
 from documents.file_handling import delete_empty_directories
@@ -57,7 +55,6 @@ from documents.plugins.helpers import DocumentsStatusManager
 from documents.templating.utils import convert_format_str_to_template_format
 from documents.utils import compute_checksum
 from documents.workflows.actions import build_workflow_action_context
-from documents.workflows.actions import execute_email_action
 from documents.workflows.actions import execute_move_to_trash_action
 from documents.workflows.actions import execute_password_removal_action
 from documents.workflows.actions import execute_webhook_action
@@ -66,7 +63,6 @@ from documents.workflows.mutations import apply_assignment_to_overrides
 from documents.workflows.mutations import apply_removal_to_document
 from documents.workflows.mutations import apply_removal_to_overrides
 from documents.workflows.utils import get_workflows_for_trigger
-from paperless.config import AIConfig
 
 if TYPE_CHECKING:
     import uuid
@@ -738,15 +734,6 @@ def cleanup_custom_field_deletion(sender, instance: CustomField, **kwargs) -> No
         )
 
 
-@receiver(models.signals.post_save, sender=Document)
-def update_llm_suggestions_cache(sender, instance, **kwargs):
-    """
-    Invalidate suggestions caches when a document is saved.
-    """
-    invalidate_suggestions_cache(instance.pk)
-    invalidate_llm_suggestions_cache(instance.pk)
-
-
 @receiver(models.signals.post_delete, sender=User)
 @receiver(models.signals.post_delete, sender=Group)
 def cleanup_user_deletion(sender, instance: User | Group, **kwargs) -> None:
@@ -944,16 +931,6 @@ def run_workflows(
                         apply_removal_to_overrides(action, overrides)
                     else:
                         apply_removal_to_document(action, document)
-                elif action.type == WorkflowAction.WorkflowActionType.EMAIL:
-                    context = build_workflow_action_context(document, overrides)
-                    execute_email_action(
-                        action,
-                        document,
-                        context,
-                        logging_group,
-                        original_file,
-                        trigger_type,
-                    )
                 elif action.type == WorkflowAction.WorkflowActionType.WEBHOOK:
                     context = build_workflow_action_context(document, overrides)
                     execute_webhook_action(
@@ -974,39 +951,6 @@ def run_workflows(
                     )
                 elif action.type == WorkflowAction.WorkflowActionType.MOVE_TO_TRASH:
                     has_move_to_trash_action = True
-                elif action.type == WorkflowAction.WorkflowActionType.REMOTE_OCR:
-                    if use_overrides and overrides:
-                        overrides.remote_ocr = True
-                    else:
-                        # If a workflow has a consumption trigger *and* another type,
-                        # the document has already been parsed by the time the other one fires
-                        logger.debug(
-                            "Remote OCR action only applies to consumption "
-                            "triggers, ignoring",
-                            extra={"group": logging_group},
-                        )
-                elif (
-                    action.type
-                    == WorkflowAction.WorkflowActionType.APPLY_AI_SUGGESTIONS
-                ):
-                    if use_overrides:
-                        # The document has not been parsed yet, so there is no
-                        # content for the LLM to make suggestions from
-                        logger.debug(
-                            "Apply AI suggestions action does not apply to "
-                            "consumption triggers, ignoring",
-                            extra={"group": logging_group},
-                        )
-                    else:
-                        # Queued rather than run sync
-                        from documents.tasks import apply_ai_suggestions
-
-                        # kwargs so the PaperlessTask record can note the
-                        # document, see _extract_input_data
-                        apply_ai_suggestions.delay_on_commit(
-                            action_id=action.pk,
-                            document_id=document.pk,
-                        )
 
             if not use_overrides:
                 # limit title to 128 characters
@@ -1054,15 +998,12 @@ TRACKED_TASKS: dict[str, PaperlessTask.TaskType] = {
     "documents.tasks.consume_file": PaperlessTask.TaskType.CONSUME_FILE,
     "documents.tasks.train_classifier": PaperlessTask.TaskType.TRAIN_CLASSIFIER,
     "documents.tasks.sanity_check": PaperlessTask.TaskType.SANITY_CHECK,
-    "documents.tasks.llmindex_index": PaperlessTask.TaskType.LLM_INDEX,
     "documents.tasks.empty_trash": PaperlessTask.TaskType.EMPTY_TRASH,
     "documents.tasks.check_scheduled_workflows": PaperlessTask.TaskType.CHECK_WORKFLOWS,
-    "paperless_mail.tasks.process_mail_accounts": PaperlessTask.TaskType.MAIL_FETCH,
     "documents.tasks.bulk_update_documents": PaperlessTask.TaskType.BULK_UPDATE,
     "documents.tasks.update_document_content_maybe_archive_file": PaperlessTask.TaskType.REPROCESS_DOCUMENT,
     "documents.tasks.build_share_link_bundle": PaperlessTask.TaskType.BUILD_SHARE_LINK,
     "documents.bulk_edit.delete": PaperlessTask.TaskType.BULK_DELETE,
-    "documents.tasks.apply_ai_suggestions": PaperlessTask.TaskType.APPLY_AI_SUGGESTIONS,
 }
 
 _CELERY_STATE_TO_STATUS: dict[str, PaperlessTask.Status] = {
@@ -1080,8 +1021,7 @@ def _extract_input_data(
 
     For consume_file tasks this includes the filename, MIME type, and any
     non-null overrides from the DocumentMetadataOverrides object.  For
-    mail_fetch tasks it captures the account_ids list.  All other task
-    types store no input data and return {}.
+    all other task types store no input data and return {}.
     """
     if task_type == PaperlessTask.TaskType.CONSUME_FILE:
         input_doc = task_kwargs.get("input_doc")
@@ -1109,18 +1049,6 @@ def _extract_input_data(
             if override_dict:
                 data["overrides"] = override_dict
         return data
-
-    if task_type == PaperlessTask.TaskType.MAIL_FETCH:
-        account_ids = task_kwargs.get("account_ids")
-        if account_ids is not None:
-            return {"account_ids": account_ids}
-        return {}
-
-    if task_type == PaperlessTask.TaskType.APPLY_AI_SUGGESTIONS:
-        document_id = task_kwargs.get("document_id")
-        if document_id is not None:
-            return {"document_id": document_id}
-        return {}
 
     return {}
 
@@ -1396,8 +1324,6 @@ def close_connection_pool_on_worker_init(**kwargs) -> None:
     for conn in connections.all(initialized_only=True):
         if conn.alias == "default" and hasattr(conn, "pool") and conn.pool:
             conn.close_pool()
-
-
 @worker_process_shutdown.connect
 def close_connection_pool_on_worker_shutdown(**kwargs) -> None:  # pragma: no cover
     """
@@ -1410,32 +1336,3 @@ def close_connection_pool_on_worker_shutdown(**kwargs) -> None:  # pragma: no co
     for conn in connections.all(initialized_only=True):
         if conn.alias == "default" and hasattr(conn, "pool") and conn.pool:
             conn.close_pool()
-
-
-def add_or_update_document_in_llm_index(sender, document, **kwargs):
-    """
-    Add or update a document in the LLM index when it is created or updated.
-    """
-    if kwargs.get("skip_ai_index"):
-        return
-    ai_config = AIConfig()
-    if ai_config.llm_index_enabled:
-        from documents.tasks import update_document_in_llm_index
-
-        update_document_in_llm_index.apply_async(kwargs={"document": document})
-
-
-@receiver(models.signals.post_delete, sender=Document)
-def delete_document_from_llm_index(
-    sender: Any,
-    instance: Document,
-    **kwargs: Any,
-) -> None:
-    """
-    Delete a document from the LLM index when it is deleted.
-    """
-    ai_config = AIConfig()
-    if ai_config.llm_index_enabled:
-        from documents.tasks import remove_document_from_llm_index
-
-        remove_document_from_llm_index.apply_async(kwargs={"document": instance})

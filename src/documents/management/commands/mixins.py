@@ -53,14 +53,6 @@ class CryptMixin:
 
     CRYPT_FIELDS: list[CryptFields] = [
         {
-            "exporter_key": "mail_accounts",
-            "model_name": "paperless_mail.mailaccount",
-            "fields": [
-                "password",
-                "refresh_token",
-            ],
-        },
-        {
             "exporter_key": "social_tokens",
             "model_name": "socialaccount.socialtoken",
             "fields": [

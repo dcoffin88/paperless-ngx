@@ -4,8 +4,6 @@ export enum PaperlessTaskType {
   ConsumeFile = 'consume_file',
   TrainClassifier = 'train_classifier',
   SanityCheck = 'sanity_check',
-  MailFetch = 'mail_fetch',
-  LlmIndex = 'llm_index',
   EmptyTrash = 'empty_trash',
   CheckWorkflows = 'check_workflows',
   BulkUpdate = 'bulk_update',
