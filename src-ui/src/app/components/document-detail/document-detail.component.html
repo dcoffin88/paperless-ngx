@@ -98,11 +98,6 @@
       <button ngbDropdownItem (click)="openShareLinks()" *pngxIfPermissions="{ action: PermissionAction.Add, type: PermissionType.ShareLink }">
         <i-bs name="link" class="me-1"></i-bs><span i18n>Share Links</span>
       </button>
-      @if (emailEnabled) {
-        <button ngbDropdownItem (click)="openEmailDocument()">
-          <i-bs name="envelope" class="me-1"></i-bs><span i18n>Email</span>
-        </button>
-      }
     </div>
   </div>
 
@@ -133,11 +128,6 @@
                 [disabled]="!userCanEdit || suggestionsLoading()"
                 [loading]="suggestionsLoading()"
                 [suggestions]="suggestions()"
-                [aiEnabled]="aiEnabled"
-                [appliedTags]="documentForm.value.tags"
-                [appliedCorrespondent]="documentForm.value.correspondent"
-                [appliedDocumentType]="documentForm.value.document_type"
-                [appliedStoragePath]="documentForm.value.storage_path"
                 (getSuggestions)="getSuggestions()"
                 (addTag)="createTag($event)"
                 (addDocumentType)="createDocumentType($event)"

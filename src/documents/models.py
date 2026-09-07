@@ -562,7 +562,6 @@ class SavedView(ModelWithOwner):
         CAMERA = ("camera", _("Camera"))
         CARD_CHECKLIST = ("card-checklist", _("Checklist"))
         CASH = ("cash", _("Cash"))
-        CHAT_LEFT_TEXT = ("chat-left-text", _("Chat"))
         CHECK_CIRCLE = ("check-circle", _("Check"))
         CLIPBOARD = ("clipboard", _("Clipboard"))
         CLOCK_HISTORY = ("clock-history", _("Clock"))
@@ -607,7 +606,6 @@ class SavedView(ModelWithOwner):
         TAGS = ("tags", _("Tags"))
         TELEPHONE = ("telephone", _("Telephone"))
         TRUCK = ("truck", _("Truck"))
-        UPC_SCAN = ("upc-scan", _("Barcode"))
         WALLET = ("wallet2", _("Wallet"))
 
     class DisplayMode(models.TextChoices):
@@ -786,15 +784,12 @@ class PaperlessTask(ModelWithOwner):
         TRAIN_CLASSIFIER = "train_classifier", _("Train Classifier")
         SANITY_CHECK = "sanity_check", _("Sanity Check")
         INDEX_OPTIMIZE = "index_optimize", _("Index Optimize")
-        MAIL_FETCH = "mail_fetch", _("Mail Fetch")
-        LLM_INDEX = "llm_index", _("LLM Index")
         EMPTY_TRASH = "empty_trash", _("Empty Trash")
         CHECK_WORKFLOWS = "check_workflows", _("Check Workflows")
         BULK_UPDATE = "bulk_update", _("Bulk Update")
         REPROCESS_DOCUMENT = "reprocess_document", _("Reprocess Document")
         BUILD_SHARE_LINK = "build_share_link", _("Build Share Link")
         BULK_DELETE = "bulk_delete", _("Bulk Delete")
-        APPLY_AI_SUGGESTIONS = "apply_ai_suggestions", _("Apply AI Suggestions")
 
     COMPLETE_STATUSES = (
         Status.SUCCESS,
@@ -807,7 +802,6 @@ class PaperlessTask(ModelWithOwner):
         WEB_UI = "web_ui", _("Web UI")  # Document uploaded via web
         API_UPLOAD = "api_upload", _("API Upload")  # Document uploaded via API
         FOLDER_CONSUME = "folder_consume", _("Folder Consume")  # Consume folder
-        EMAIL_CONSUME = "email_consume", _("Email Consume")  # Email attachment
         SYSTEM = "system", _("System")  # Auto-triggered (self-heal, config side-effect)
         MANUAL = "manual", _("Manual")  # User explicitly ran via /api/tasks/run/
 
@@ -1379,7 +1373,6 @@ class WorkflowTrigger(models.Model):
     class DocumentSourceChoices(models.IntegerChoices):
         CONSUME_FOLDER = DocumentSource.ConsumeFolder.value, _("Consume Folder")
         API_UPLOAD = DocumentSource.ApiUpload.value, _("Api Upload")
-        MAIL_FETCH = DocumentSource.MailFetch.value, _("Mail Fetch")
         WEB_UI = DocumentSource.WebUI.value, _("Web UI")
 
     class ScheduleDateField(models.TextChoices):
@@ -1397,7 +1390,7 @@ class WorkflowTrigger(models.Model):
     sources = MultiSelectField(
         max_length=7,
         choices=DocumentSourceChoices.choices,
-        default=f"{DocumentSource.ConsumeFolder},{DocumentSource.ApiUpload},{DocumentSource.MailFetch},{DocumentSource.WebUI}",
+        default=f"{DocumentSource.ConsumeFolder},{DocumentSource.ApiUpload},{DocumentSource.WebUI}",
     )
 
     filter_path = models.CharField(
@@ -1422,14 +1415,6 @@ class WorkflowTrigger(models.Model):
             "filename if specified. Wildcards such as *.pdf or "
             "*invoice* are allowed. Case insensitive.",
         ),
-    )
-
-    filter_mailrule = models.ForeignKey(
-        "paperless_mail.MailRule",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        verbose_name=_("filter documents from this mail rule"),
     )
 
     match = models.CharField(_("match"), max_length=256, blank=True)
@@ -1586,43 +1571,6 @@ class WorkflowTrigger(models.Model):
         return f"WorkflowTrigger {self.pk}"
 
 
-class WorkflowActionEmail(models.Model):
-    subject = models.CharField(
-        _("email subject"),
-        max_length=256,
-        null=False,
-        help_text=_(
-            "The subject of the email, can include some placeholders, "
-            "see documentation.",
-        ),
-    )
-
-    body = models.TextField(
-        _("email body"),
-        null=False,
-        help_text=_(
-            "The body (message) of the email, can include some placeholders, "
-            "see documentation.",
-        ),
-    )
-
-    to = models.TextField(
-        _("emails to"),
-        null=False,
-        help_text=_(
-            "The destination email addresses, comma separated.",
-        ),
-    )
-
-    include_document = models.BooleanField(
-        default=False,
-        verbose_name=_("include document in email"),
-    )
-
-    def __str__(self):
-        return f"Workflow Email Action {self.pk}"
-
-
 class WorkflowActionWebhook(models.Model):
     # We dont use the built-in URLField because it is not flexible enough
     # validation is handled in the serializer
@@ -1683,10 +1631,6 @@ class WorkflowAction(models.Model):
             2,
             _("Removal"),
         )
-        EMAIL = (
-            3,
-            _("Email"),
-        )
         WEBHOOK = (
             4,
             _("Webhook"),
@@ -1699,22 +1643,6 @@ class WorkflowAction(models.Model):
             6,
             _("Move to trash"),
         )
-        REMOTE_OCR = (
-            7,
-            _("Remote OCR"),
-        )
-        APPLY_AI_SUGGESTIONS = (
-            8,
-            _("Apply AI suggestions"),
-        )
-
-    class AISuggestionField(models.TextChoices):
-        TITLE = ("title", _("Title"))
-        TAGS = ("tags", _("Tags"))
-        CORRESPONDENT = ("correspondent", _("Correspondent"))
-        DOCUMENT_TYPE = ("document_type", _("Document type"))
-        STORAGE_PATH = ("storage_path", _("Storage path"))
-        CREATED = ("created", _("Created date"))
 
     type = models.PositiveSmallIntegerField(
         _("Workflow Action Type"),
@@ -1926,15 +1854,6 @@ class WorkflowAction(models.Model):
         verbose_name=_("remove all custom fields"),
     )
 
-    email = models.ForeignKey(
-        WorkflowActionEmail,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="action",
-        verbose_name=_("email"),
-    )
-
     webhook = models.ForeignKey(
         WorkflowActionWebhook,
         null=True,
@@ -1950,33 +1869,6 @@ class WorkflowAction(models.Model):
         blank=True,
         help_text=_(
             "Passwords to try when removing PDF protection. Separate with commas or new lines.",
-        ),
-    )
-
-    ai_suggestion_fields = models.JSONField(
-        _("AI suggestion fields"),
-        null=True,
-        blank=True,
-        help_text=_(
-            "Which of the AI-suggested fields to apply to the document.",
-        ),
-    )
-
-    ai_create_missing = models.BooleanField(
-        _("create missing objects"),
-        default=False,
-        help_text=_(
-            "Create suggested tags, correspondents, document types and storage "
-            "paths that do not already exist instead of skipping them.",
-        ),
-    )
-
-    ai_overwrite_existing = models.BooleanField(
-        _("overwrite existing values"),
-        default=False,
-        help_text=_(
-            "Apply suggestions even if the document already has a value for that "
-            "field. Tags are always added to, never replaced.",
         ),
     )
 

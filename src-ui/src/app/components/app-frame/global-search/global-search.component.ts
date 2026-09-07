@@ -50,8 +50,6 @@ import { CustomFieldEditDialogComponent } from '../../common/edit-dialog/custom-
 import { DocumentTypeEditDialogComponent } from '../../common/edit-dialog/document-type-edit-dialog/document-type-edit-dialog.component'
 import { EditDialogMode } from '../../common/edit-dialog/edit-dialog.component'
 import { GroupEditDialogComponent } from '../../common/edit-dialog/group-edit-dialog/group-edit-dialog.component'
-import { MailAccountEditDialogComponent } from '../../common/edit-dialog/mail-account-edit-dialog/mail-account-edit-dialog.component'
-import { MailRuleEditDialogComponent } from '../../common/edit-dialog/mail-rule-edit-dialog/mail-rule-edit-dialog.component'
 import { StoragePathEditDialogComponent } from '../../common/edit-dialog/storage-path-edit-dialog/storage-path-edit-dialog.component'
 import { TagEditDialogComponent } from '../../common/edit-dialog/tag-edit-dialog/tag-edit-dialog.component'
 import { UserEditDialogComponent } from '../../common/edit-dialog/user-edit-dialog/user-edit-dialog.component'
@@ -178,14 +176,6 @@ export class GlobalSearchComponent implements OnInit {
       case DataType.Group:
         editDialogComponent = GroupEditDialogComponent
         size = 'lg'
-        break
-      case DataType.MailAccount:
-        editDialogComponent = MailAccountEditDialogComponent
-        size = 'xl'
-        break
-      case DataType.MailRule:
-        editDialogComponent = MailRuleEditDialogComponent
-        size = 'xl'
         break
       case DataType.CustomField:
         editDialogComponent = CustomFieldEditDialogComponent

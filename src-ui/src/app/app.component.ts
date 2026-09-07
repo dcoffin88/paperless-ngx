@@ -205,14 +205,6 @@ export class AppComponent implements OnInit, OnDestroy {
         },
       },
       {
-        anchorId: 'tour.mail',
-        content: $localize`Manage e-mail accounts and rules for automatically importing documents.`,
-        route: '/mail',
-        backdropConfig: {
-          offset: 0,
-        },
-      },
-      {
         anchorId: 'tour.workflows',
         content: $localize`Workflows give you more control over the document pipeline.`,
         route: '/workflows',

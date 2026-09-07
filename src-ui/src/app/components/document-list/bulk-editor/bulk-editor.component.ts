@@ -61,7 +61,6 @@ import { DocumentTypeEditDialogComponent } from '../../common/edit-dialog/docume
 import { EditDialogMode } from '../../common/edit-dialog/edit-dialog.component'
 import { StoragePathEditDialogComponent } from '../../common/edit-dialog/storage-path-edit-dialog/storage-path-edit-dialog.component'
 import { TagEditDialogComponent } from '../../common/edit-dialog/tag-edit-dialog/tag-edit-dialog.component'
-import { EmailDocumentDialogComponent } from '../../common/email-document-dialog/email-document-dialog.component'
 import {
   ChangedItems,
   FilterableDropdownComponent,
@@ -934,10 +933,7 @@ export class BulkEditorComponent
         modal.componentInstance.buttonsEnabled.set(false)
         this.executeDocumentAction(
           modal,
-          this.documentService.reprocessDocuments(
-            this.getSelectionQuery(),
-            modal.componentInstance.remoteOcr
-          )
+          this.documentService.reprocessDocuments(this.getSelectionQuery())
         )
       })
   }
@@ -1080,10 +1076,6 @@ export class BulkEditorComponent
     })
   }
 
-  public get emailEnabled(): boolean {
-    return this.settings.get(SETTINGS_KEYS.EMAIL_ENABLED)
-  }
-
   public get canSendSelection(): boolean {
     return (
       this.list.hasSelection &&
@@ -1143,15 +1135,4 @@ export class BulkEditorComponent
     })
   }
 
-  emailSelected() {
-    const allHaveArchiveVersion = this.list.documents
-      .filter((d) => this.list.selected.has(d.id))
-      .every((doc) => !!doc.archived_file_name)
-
-    const modal = this.modalService.open(EmailDocumentDialogComponent, {
-      backdrop: 'static',
-    })
-    modal.componentInstance.documentIds.set(Array.from(this.list.selected))
-    modal.componentInstance.hasArchiveVersion.set(allHaveArchiveVersion)
-  }
 }

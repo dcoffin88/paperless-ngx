@@ -18,7 +18,6 @@ from rest_framework.routers import DefaultRouter
 from documents.views import BulkDownloadView
 from documents.views import BulkEditObjectsView
 from documents.views import BulkEditView
-from documents.views import ChatStreamingView
 from documents.views import CorrespondentViewSet
 from documents.views import CustomFieldViewSet
 from documents.views import DeleteDocumentsView
@@ -63,10 +62,6 @@ from paperless.views import ProfileView
 from paperless.views import SocialAccountProvidersView
 from paperless.views import TOTPView
 from paperless.views import UserViewSet
-from paperless_mail.views import MailAccountViewSet
-from paperless_mail.views import MailRuleViewSet
-from paperless_mail.views import OauthCallbackView
-from paperless_mail.views import ProcessedMailViewSet
 
 api_router = DefaultRouter()
 api_router.register(r"correspondents", CorrespondentViewSet)
@@ -79,8 +74,6 @@ api_router.register(r"storage_paths", StoragePathViewSet)
 api_router.register(r"tasks", TasksViewSet, basename="tasks")
 api_router.register(r"users", UserViewSet, basename="users")
 api_router.register(r"groups", GroupViewSet, basename="groups")
-api_router.register(r"mail_accounts", MailAccountViewSet)
-api_router.register(r"mail_rules", MailRuleViewSet)
 api_router.register(r"share_link_bundles", ShareLinkBundleViewSet)
 api_router.register(r"share_links", ShareLinkViewSet)
 api_router.register(r"workflow_triggers", WorkflowTriggerViewSet)
@@ -88,7 +81,6 @@ api_router.register(r"workflow_actions", WorkflowActionViewSet)
 api_router.register(r"workflows", WorkflowViewSet)
 api_router.register(r"custom_fields", CustomFieldViewSet)
 api_router.register(r"config", ApplicationConfigurationViewSet)
-api_router.register(r"processed_mail", ProcessedMailViewSet)
 
 
 urlpatterns = [
@@ -198,11 +190,6 @@ urlpatterns = [
                                 SelectionDataView.as_view(),
                                 name="selection_data",
                             ),
-                            re_path(
-                                "^chat/",
-                                ChatStreamingView.as_view(),
-                                name="chat_streaming_view",
-                            ),
                         ],
                     ),
                 ),
@@ -263,11 +250,6 @@ urlpatterns = [
                     "^trash/",
                     TrashView.as_view(),
                     name="trash",
-                ),
-                re_path(
-                    r"^oauth/callback/",
-                    OauthCallbackView.as_view(),
-                    name="oauth_callback",
                 ),
                 re_path(
                     "^schema/",

@@ -124,18 +124,6 @@
             <i-bs name="list-ul" class="me-1"></i-bs><ng-container i18n>Manage share link bundles</ng-container>
           </button>
         }
-        @if (
-          emailEnabled &&
-          (permissionService.currentUserCan(PermissionAction.Add, PermissionType.ShareLinkBundle) ||
-            permissionService.currentUserCan(PermissionAction.View, PermissionType.ShareLinkBundle))
-        ) {
-          <div class="dropdown-divider"></div>
-        }
-        @if (emailEnabled) {
-          <button ngbDropdownItem (click)="emailSelected()" [disabled]="!canSendSelection">
-            <i-bs name="envelope" class="me-1"></i-bs><ng-container i18n>Email</ng-container>
-          </button>
-        }
       </div>
     </div>
     <div class="btn-group btn-group-sm">

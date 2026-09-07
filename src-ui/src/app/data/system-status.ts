@@ -44,9 +44,6 @@ export interface SystemStatus {
     sanity_check_status: SystemStatusItemStatus
     sanity_check_last_run: string // ISO date string
     sanity_check_error: string
-    llmindex_status: SystemStatusItemStatus
-    llmindex_last_modified: string // ISO date string
-    llmindex_error: string
     summary: {
       days: number
       total_count: number

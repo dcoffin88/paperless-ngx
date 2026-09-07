@@ -198,13 +198,11 @@ class ParserRegistry:
         at runtime regardless of registration order.
         """
         from paperless.parsers.mail import MailDocumentParser
-        from paperless.parsers.remote import RemoteDocumentParser
         from paperless.parsers.tesseract import RasterisedDocumentParser
         from paperless.parsers.text import TextDocumentParser
         from paperless.parsers.tika import TikaDocumentParser
 
         self.register_builtin(TextDocumentParser)
-        self.register_builtin(RemoteDocumentParser)
         self.register_builtin(TikaDocumentParser)
         self.register_builtin(MailDocumentParser)
         self.register_builtin(RasterisedDocumentParser)

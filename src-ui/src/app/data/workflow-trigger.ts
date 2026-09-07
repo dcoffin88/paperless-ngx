@@ -3,7 +3,6 @@ import { ObjectWithId } from './object-with-id'
 export enum DocumentSource {
   ConsumeFolder = 1,
   ApiUpload = 2,
-  MailFetch = 3,
   WebUI = 4,
 }
 
@@ -29,8 +28,6 @@ export interface WorkflowTrigger extends ObjectWithId {
   filter_filename?: string
 
   filter_path?: string
-
-  filter_mailrule?: number // MailRule.id
 
   match?: string
 

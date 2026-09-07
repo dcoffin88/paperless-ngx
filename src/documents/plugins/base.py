@@ -12,7 +12,7 @@ class StopConsumeTaskError(Exception):
     A plugin setup or run may raise this to exit the asynchronous consume task.
 
     Most likely, this means it has created one or more new tasks to execute instead,
-    such as when a barcode has been used to create new documents
+    such as when a plugin has been used to create new documents
     """
 
     def __init__(self, message: str) -> None:

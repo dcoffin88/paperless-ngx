@@ -34,7 +34,6 @@ class DocumentMetadataOverrides:
     skip_asn_if_exists: bool = False
     version_label: str | None = None
     actor_id: int | None = None
-    remote_ocr: bool = False
 
     def update(self, other: "DocumentMetadataOverrides") -> "DocumentMetadataOverrides":
         """
@@ -58,8 +57,6 @@ class DocumentMetadataOverrides:
             self.actor_id = other.actor_id
         if other.skip_asn_if_exists:
             self.skip_asn_if_exists = True
-        if other.remote_ocr:
-            self.remote_ocr = True
         if other.version_label is not None:
             self.version_label = other.version_label
 
@@ -206,7 +203,7 @@ class ConsumeFileSuccessResult(TypedDict):
 class ConsumeFileStoppedResult(TypedDict):
     """Returned by consume_file when a plugin raises StopConsumeTaskError.
 
-    Examples: barcode split dispatched child tasks, double-sided scan waiting
+    Examples: dispatched child tasks, double-sided scan waiting
     for the second half, workflow deleted the document during consumption.
     """
 

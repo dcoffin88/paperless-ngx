@@ -90,8 +90,7 @@ class ParserContext:
     Fields
     ------
     mailrule_id : int | None
-        Primary key of the ``MailRule`` that triggered this ingestion,
-        or ``None`` when the document did not arrive via a mail rule.
+        Reserved for parser-specific ingestion metadata.
         Used by ``MailDocumentParser`` to select the PDF layout.
 
     Notes

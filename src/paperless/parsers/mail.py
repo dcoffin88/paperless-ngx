@@ -18,6 +18,7 @@ import re
 import shutil
 import tempfile
 from html import escape
+from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Self
@@ -43,7 +44,6 @@ from documents.parsers import ParseError
 from documents.parsers import make_thumbnail_from_pdf
 from paperless.models import OutputTypeChoices
 from paperless.version import __full_version_str__
-from paperless_mail.models import MailRule
 
 if TYPE_CHECKING:
     import datetime
@@ -63,6 +63,13 @@ _SUPPORTED_MIME_TYPES: dict[str, str] = {
 # over an unbounded attacker-controlled field. URL linkification remains enabled
 # for longer text.
 _MAX_EMAIL_LINKIFY_LENGTH = 2048
+
+
+class PdfLayout(IntEnum):
+    TEXT_HTML = 1
+    HTML_TEXT = 2
+    HTML_ONLY = 3
+    TEXT_ONLY = 4
 
 
 class MailDocumentParser:
@@ -275,14 +282,7 @@ class MailDocumentParser:
         self._date = mail.date
 
         logger.debug("Creating a PDF from the email")
-        if self._mailrule_id:
-            rule = MailRule.objects.get(pk=self._mailrule_id)
-            self._archive_path = self.generate_pdf(
-                mail,
-                MailRule.PdfLayout(rule.pdf_layout),
-            )
-        else:
-            self._archive_path = self.generate_pdf(mail)
+        self._archive_path = self.generate_pdf(mail)
 
     # ------------------------------------------------------------------
     # Result accessors
@@ -540,7 +540,7 @@ class MailDocumentParser:
     def generate_pdf(
         self,
         mail_message: MailMessage,
-        pdf_layout: MailRule.PdfLayout | None = None,
+        pdf_layout: PdfLayout | None = None,
     ) -> Path:
         """Generate a PDF from the email message.
 
@@ -565,7 +565,7 @@ class MailDocumentParser:
         mail_pdf_file = self.generate_pdf_from_mail(mail_message)
 
         if pdf_layout is None:
-            pdf_layout = MailRule.PdfLayout(settings.EMAIL_PARSE_DEFAULT_LAYOUT)
+            pdf_layout = PdfLayout(settings.EMAIL_PARSE_DEFAULT_LAYOUT)
 
         # If no HTML content, create the PDF from the message.
         # Otherwise, create 2 PDFs and merge them with Gotenberg.
@@ -592,13 +592,13 @@ class MailDocumentParser:
                     route.pdf_format(pdf_a_format)
 
                 match pdf_layout:
-                    case MailRule.PdfLayout.HTML_TEXT:
+                    case PdfLayout.HTML_TEXT:
                         route.merge([pdf_of_html_content, mail_pdf_file])
-                    case MailRule.PdfLayout.HTML_ONLY:
+                    case PdfLayout.HTML_ONLY:
                         route.merge([pdf_of_html_content])
-                    case MailRule.PdfLayout.TEXT_ONLY:
+                    case PdfLayout.TEXT_ONLY:
                         route.merge([mail_pdf_file])
-                    case MailRule.PdfLayout.TEXT_HTML | _:
+                    case PdfLayout.TEXT_HTML | _:
                         route.merge([mail_pdf_file, pdf_of_html_content])
 
                 try:
@@ -701,7 +701,7 @@ class MailDocumentParser:
 
         css_file = (
             Path(__file__).parent.parent.parent
-            / "paperless_mail"
+            / "mail"
             / "templates"
             / "output.css"
         )

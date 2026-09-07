@@ -34,9 +34,6 @@
     </div>
   </div>
   <ul ngbNav class="order-sm-3">
-    @if (aiEnabled) {
-      <pngx-chat></pngx-chat>
-    }
     <pngx-toasts-dropdown></pngx-toasts-dropdown>
     <li ngbDropdown class="nav-item dropdown">
       <button class="btn navbar-action border-0 me-1 me-md-2" id="userDropdown" ngbDropdownToggle aria-label="User menu" i18n-aria-label>
@@ -272,17 +269,6 @@
               </a>
               @if (settingsService.organizingSidebarItems()) {
                 <pngx-input-switch class="position-absolute top-50 end-0 translate-middle-y me-1" [class.d-none]="slimSidebarEnabled || slimSidebarAnimating()" [compact]="true" title="Workflows" i18n-title [ngModel]="!settingsService.sidebarItemIsHidden(HideableSidebarItemID.Workflows)" (ngModelChange)="toggleSidebarItem(HideableSidebarItemID.Workflows, $event)"></pngx-input-switch>
-              }
-            </li>
-            <li class="nav-item app-link position-relative" [class.d-none]="settingsService.sidebarItemIsHidden(HideableSidebarItemID.Mail) && !settingsService.organizingSidebarItems()" *pngxIfPermissions="{ action: PermissionAction.View, type: PermissionType.MailAccount }"
-              tourAnchor="tour.mail">
-              <a class="nav-link" [class.opacity-50]="settingsService.sidebarItemIsHidden(HideableSidebarItemID.Mail)" [class.pe-5]="settingsService.organizingSidebarItems() && !slimSidebarEnabled && !slimSidebarAnimating()" routerLink="mail" routerLinkActive="active" (click)="closeMenu()" ngbPopover="Mail"
-                i18n-ngbPopover [disablePopover]="!slimSidebarPopoversEnabled" placement="end" container="body"
-                triggers="mouseenter:mouseleave" popoverClass="popover-slim">
-                <i-bs class="me-2" name="envelope"></i-bs><span class="nav-link-label"><ng-container i18n>Mail</ng-container></span>
-              </a>
-              @if (settingsService.organizingSidebarItems()) {
-                <pngx-input-switch class="position-absolute top-50 end-0 translate-middle-y me-1" [class.d-none]="slimSidebarEnabled || slimSidebarAnimating()" [compact]="true" title="Mail" i18n-title [ngModel]="!settingsService.sidebarItemIsHidden(HideableSidebarItemID.Mail)" (ngModelChange)="toggleSidebarItem(HideableSidebarItemID.Mail, $event)"></pngx-input-switch>
               }
             </li>
             <li class="nav-item app-link" *pngxIfPermissions="{ action: PermissionAction.Delete, type: PermissionType.Document }">

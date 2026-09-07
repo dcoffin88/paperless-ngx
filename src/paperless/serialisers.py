@@ -23,9 +23,13 @@ from paperless.models import ApplicationConfiguration
 from paperless.network import validate_outbound_http_url
 from paperless.validators import reject_dangerous_svg
 from paperless.validators import validate_raster_image
-from paperless_mail.serialisers import ObfuscatedPasswordField
 
 logger = logging.getLogger("paperless.settings")
+
+
+class ObfuscatedPasswordField(serializers.CharField):
+    def to_representation(self, value):
+        return "********" if value else ""
 
 
 class PasswordValidationMixin:
@@ -215,19 +219,6 @@ class ApplicationConfigurationSerializer(
 ):
     externally_configured_variables = serializers.SerializerMethodField()
     user_args = serializers.JSONField(binary=True, allow_null=True)
-    barcode_tag_mapping = serializers.JSONField(binary=True, allow_null=True)
-    llm_api_key = ObfuscatedPasswordField(
-        required=False,
-        allow_null=True,
-        max_length=1024,
-    )
-    remote_ocr_api_key = ObfuscatedPasswordField(
-        required=False,
-        allow_null=True,
-        max_length=1024,
-    )
-
-    OBFUSCATED_FIELDS = ("llm_api_key", "remote_ocr_api_key")
 
     def get_externally_configured_variables(
         self,
@@ -257,12 +248,8 @@ class ApplicationConfigurationSerializer(
         # Empty strings treated as None to avoid unexpected behavior
         if "user_args" in data and data["user_args"] == "":
             data["user_args"] = None
-        if "barcode_tag_mapping" in data and data["barcode_tag_mapping"] == "":
-            data["barcode_tag_mapping"] = None
         if "language" in data and data["language"] == "":
             data["language"] = None
-        if "llm_output_language" in data and data["llm_output_language"] == "":
-            data["llm_output_language"] = None
         for field in self.OBFUSCATED_FIELDS:
             if field in data and data[field] is not None:
                 if data[field] == "":
@@ -312,40 +299,6 @@ class ApplicationConfigurationSerializer(
                     file = self._sanitize_raster_image(file)
 
         return file
-
-    def validate_llm_endpoint(self, value: str | None) -> str | None:
-        if not value:
-            return value
-
-        try:
-            validate_outbound_http_url(
-                value,
-                allow_internal=settings.LLM_ALLOW_INTERNAL_ENDPOINTS,
-            )
-        except ValueError as e:
-            raise serializers.ValidationError(
-                f"Invalid LLM endpoint: {e.args[0]}, see logs for details",
-            ) from e
-
-        return value
-
-    validate_llm_embedding_endpoint = validate_llm_endpoint
-
-    def validate_remote_ocr_endpoint(self, value: str | None) -> str | None:
-        if not value:
-            return value
-
-        try:
-            validate_outbound_http_url(
-                value,
-                allow_internal=settings.REMOTE_OCR_ALLOW_INTERNAL_ENDPOINTS,
-            )
-        except ValueError as e:
-            raise serializers.ValidationError(
-                f"Invalid remote OCR endpoint: {e.args[0]}, see logs for details",
-            ) from e
-
-        return value
 
     class Meta:
         model = ApplicationConfiguration

@@ -52,7 +52,7 @@
             }
             @for (highlight of searchNoteHighlights; track highlight) {
               <span class="d-block">
-                <i-bs name="chat-left-text"></i-bs>
+                <i-bs name="file-text"></i-bs>
                 <span [innerHtml]="highlight"></span>
               </span>
             }
@@ -93,7 +93,7 @@
              @if (document()) {
               @if (displayFields().includes(DisplayField.NOTES) && notesEnabled && document().notes.length) {
                 <button routerLink="/documents/{{document().id}}/notes" class="list-group-item btn btn-sm bg-light text-dark p-1 border-0 me-2 d-flex align-items-center" title="View notes" i18n-title>
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="chat-left-text"></i-bs><small>{{document().notes.length}} Notes</small>
+                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="file-text"></i-bs><small>{{document().notes.length}} Notes</small>
                 </button>
               }
               @if (displayFields().includes(DisplayField.DOCUMENT_TYPE) && document().document_type) {
@@ -110,7 +110,7 @@
               }
               @if (displayFields().includes(DisplayField.ASN) && document().archive_serial_number | isNumber) {
                 <div class="list-group-item me-2 bg-light text-dark p-1 border-0 d-flex align-items-center">
-                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="upc-scan"></i-bs><small>#{{document().archive_serial_number}}</small>
+                  <i-bs width=".9em" height=".9em" class="me-2 text-muted" name="hash"></i-bs><small>#{{document().archive_serial_number}}</small>
                 </div>
               }
               @if (displayFields().includes(DisplayField.CREATED) || displayFields().includes(DisplayField.ADDED)) {
