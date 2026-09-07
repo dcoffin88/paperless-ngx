@@ -179,6 +179,7 @@ export class SettingsComponent
     defaultPermsEditUsers: new FormControl(null),
     defaultPermsEditGroups: new FormControl(null),
     useNativePdfViewer: new FormControl(null),
+    pdfFlipbookViewer: new FormControl(null),
     pdfViewerDefaultZoom: new FormControl(null),
     pdfEditorDefaultEditMode: new FormControl(null),
     documentEditingRemoveInboxTags: new FormControl(null),
@@ -351,6 +352,7 @@ export class SettingsComponent
       useNativePdfViewer: this.settings.get(
         SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER
       ),
+      pdfFlipbookViewer: this.settings.get(SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER),
       pdfViewerDefaultZoom: this.settings.get(
         SETTINGS_KEYS.PDF_VIEWER_ZOOM_SETTING
       ),
@@ -544,6 +546,10 @@ export class SettingsComponent
     this.settings.set(
       SETTINGS_KEYS.USE_NATIVE_PDF_VIEWER,
       this.settingsForm.value.useNativePdfViewer
+    )
+    this.settings.set(
+      SETTINGS_KEYS.PDF_FLIPBOOK_VIEWER,
+      this.settingsForm.value.pdfFlipbookViewer
     )
     this.settings.set(
       SETTINGS_KEYS.PDF_VIEWER_ZOOM_SETTING,

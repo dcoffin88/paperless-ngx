@@ -1065,6 +1065,10 @@ export class DocumentDetailComponent
     return this.documentForm.get('custom_fields') as FormArray
   }
 
+  get autoSuggest(): boolean {
+    return this.autoSuggestSetting()
+  }
+
   getSuggestions() {
     this.suggestionsLoading.set(true)
     this.documentsService

@@ -122,4 +122,32 @@ describe('DocumentCardSmallComponent', () => {
     component.mouseLeaveCard()
     expect(component.popupPreview.close).toHaveBeenCalled()
   })
+
+  it('should open the flipbook lightbox from thumbnail clicks when enabled', () => {
+    const event = new MouseEvent('click')
+    component.popupPreview = {
+      usePdfFlipbookViewer: true,
+      openPreview: jest.fn(),
+    } as any
+    const toggleSpy = jest.spyOn(component.toggleSelected, 'emit')
+
+    component.clickThumbnail(event)
+
+    expect(component.popupPreview.openPreview).toHaveBeenCalledWith(event)
+    expect(toggleSpy).not.toHaveBeenCalled()
+  })
+
+  it('should toggle selection from thumbnail clicks when flipbook is disabled', () => {
+    const event = new MouseEvent('click')
+    component.popupPreview = {
+      usePdfFlipbookViewer: false,
+      openPreview: jest.fn(),
+    } as any
+    const toggleSpy = jest.spyOn(component.toggleSelected, 'emit')
+
+    component.clickThumbnail(event)
+
+    expect(component.popupPreview.openPreview).not.toHaveBeenCalled()
+    expect(toggleSpy).toHaveBeenCalledWith(event)
+  })
 })

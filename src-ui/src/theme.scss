@@ -1,8 +1,8 @@
 @use "sass:color";
 @mixin paperless-green {
-  // base color e.g. #17541f = hsl(128, 57%, 21%)
-  --pngx-primary: 128, 57%;
-  --pngx-primary-lightness: 21%;
+  // base color e.g. #0d6efd = hsl(216, 98%, 52%)
+  --pngx-primary: 216, 98%;
+  --pngx-primary-lightness: 52%;
 }
 
 :root {
@@ -35,7 +35,7 @@
 
 // Dark text colors allow for maintain contrast with theme color changes
 $text-color-light-bg: #212529;
-$text-color-dark-bg: #abb2bf;
+$text-color-dark-bg: #f1f3f5;
 $text-color-dark-bg-accent: color.adjust($text-color-dark-bg, $lightness: 10%);
 // url-encoded $text-color-light-bg
 $text-color-light-bg-esc: "%23212529";

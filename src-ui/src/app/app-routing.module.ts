@@ -7,6 +7,7 @@ import { TasksComponent } from './components/admin/tasks/tasks.component'
 import { TrashComponent } from './components/admin/trash/trash.component'
 import { UsersAndGroupsComponent } from './components/admin/users-groups/users-groups.component'
 import { AppFrameComponent } from './components/app-frame/app-frame.component'
+import { PdfFlipbookDocumentComponent } from './components/common/pdf-flipbook-viewer/pdf-flipbook-document.component'
 import { DashboardComponent } from './components/dashboard/dashboard.component'
 import { DocumentAsnComponent } from './components/document-asn/document-asn.component'
 import { DocumentDetailComponent } from './components/document-detail/document-detail.component'
@@ -27,6 +28,18 @@ import {
 
 export const routes: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  {
+    path: 'documents/:id/flipbook',
+    component: PdfFlipbookDocumentComponent,
+    canActivate: [PermissionsGuard],
+    data: {
+      requiredPermission: {
+        action: PermissionAction.View,
+        type: PermissionType.Document,
+      },
+      componentName: 'PdfFlipbookDocumentComponent',
+    },
+  },
   {
     path: '',
     component: AppFrameComponent,

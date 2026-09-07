@@ -40,7 +40,8 @@
   padding: 0.5rem;
   border-top-left-radius: 0.25rem;
   border-bottom-right-radius: 0.25rem;
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 1;
 
   .form-check {
     padding: 0;

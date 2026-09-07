@@ -140,6 +140,7 @@ from documents.filters import ShareLinkBundleFilterSet
 from documents.filters import ShareLinkFilterSet
 from documents.filters import StoragePathFilterSet
 from documents.filters import TagFilterSet
+from documents.filters import TitleContentFilter
 from documents.matching import match_correspondents
 from documents.matching import match_document_types
 from documents.matching import match_storage_paths

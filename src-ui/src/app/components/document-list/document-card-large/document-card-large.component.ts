@@ -145,6 +145,19 @@ export class DocumentCardLargeComponent
     return this.documentService.getDownloadUrl(this.document().id)
   }
 
+  clickThumbnail(event: MouseEvent) {
+    if (this.popupPreview?.usePdfFlipbookViewer) {
+      this.popupPreview.openPreview(event)
+      return
+    }
+    this.toggleSelected.emit(event)
+  }
+
+  clickSelection(event: MouseEvent) {
+    event.stopPropagation()
+    this.toggleSelected.emit(event)
+  }
+
   mouseLeaveCard() {
     this.popupPreview?.close()
   }
