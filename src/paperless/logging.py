@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextvars import ContextVar
 
@@ -31,3 +32,21 @@ class ConsumeTaskFormatter(logging.Formatter):
         task_id = consume_task_id.get()
         record.task_prefix = f"[{task_id}] " if task_id else ""
         return super().format(record)
+
+
+class AsyncioCancelledErrorFilter(logging.Filter):
+    """
+    Ignore noisy ASGI disconnect logs emitted when a browser cancels a request.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.name != "asyncio":
+            return True
+
+        if record.getMessage() != "CancelledError exception in shielded future":
+            return True
+
+        if not record.exc_info:
+            return True
+
+        return not issubclass(record.exc_info[0], asyncio.CancelledError)

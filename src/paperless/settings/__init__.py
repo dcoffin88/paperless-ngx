@@ -6,6 +6,7 @@ import math
 import multiprocessing
 import os
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Final
 from urllib.parse import urlparse
@@ -610,6 +611,11 @@ LOGROTATE_MAX_BACKUPS = os.getenv("PAPERLESS_LOGROTATE_MAX_BACKUPS", 20)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "ignore_asgi_disconnects": {
+            "()": "paperless.logging.AsyncioCancelledErrorFilter",
+        },
+    },
     "formatters": {
         "verbose": {
             "()": "paperless.logging.ConsumeTaskFormatter",
@@ -624,6 +630,7 @@ LOGGING = {
             "level": "DEBUG" if DEBUG else "INFO",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["ignore_asgi_disconnects"],
         },
         "file_paperless": {
             "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
@@ -654,10 +661,20 @@ LOGGING = {
         "celery": {"handlers": ["file_celery"], "level": "DEBUG"},
         "kombu": {"handlers": ["file_celery"], "level": "DEBUG"},
         "_granian": {"handlers": ["file_paperless"], "level": "DEBUG"},
+        "_granian.asgi.io": {"handlers": ["file_paperless"], "level": "WARNING"},
         "granian.access": {"handlers": ["file_paperless"], "level": "DEBUG"},
         "httpx": {"level": "WARNING"},
     },
 }
+
+warnings.filterwarnings(
+    "ignore",
+    message=(
+        "StreamingHttpResponse must consume synchronous iterators in order to serve "
+        "them asynchronously. Use an asynchronous iterator instead."
+    ),
+    module="django.core.handlers.asgi",
+)
 
 # Configure logging before calling any logger in settings.py so it will respect the log format, even if Django has not parsed the settings yet.
 logging.config.dictConfig(LOGGING)
