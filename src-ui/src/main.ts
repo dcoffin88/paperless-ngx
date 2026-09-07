@@ -65,6 +65,7 @@ import {
   checkLg,
   chevronDoubleLeft,
   chevronDoubleRight,
+  chevronLeft,
   chevronRight,
   circle,
   clipboard,
@@ -102,6 +103,7 @@ import {
   filter,
   folder,
   folderFill,
+  fullscreen,
   funnel,
   gear,
   globe2,
@@ -168,6 +170,8 @@ import {
   x,
   xCircle,
   xLg,
+  zoomIn,
+  zoomOut,
 } from 'ngx-bootstrap-icons'
 import { ColorSliderModule } from 'ngx-color/slider'
 import { CookieService } from 'ngx-cookie-service'
@@ -310,6 +314,7 @@ const icons = {
   checkLg,
   chevronDoubleLeft,
   chevronDoubleRight,
+  chevronLeft,
   chevronRight,
   circle,
   clipboard,
@@ -348,6 +353,7 @@ const icons = {
   filter,
   folder,
   folderFill,
+  fullscreen,
   funnel,
   gear,
   globe2,
@@ -414,6 +420,8 @@ const icons = {
   x,
   xCircle,
   xLg,
+  zoomIn,
+  zoomOut,
 }
 
 bootstrapApplication(AppComponent, {

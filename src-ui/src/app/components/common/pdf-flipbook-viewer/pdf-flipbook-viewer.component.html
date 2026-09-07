@@ -1,0 +1,95 @@
+<div
+  class="pdf-flipbook-viewer"
+  tabindex="0"
+  (keydown)="onKeyDown($event)"
+  (pointerdown)="onPointerDown($event)"
+  (pointerup)="onPointerUp($event)"
+>
+  <div #container class="pdf-flipbook-stage"></div>
+
+  @if (loading()) {
+    <div class="pdf-flipbook-status">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      {{ loadingMessage() }}
+    </div>
+  }
+
+  @if (error()) {
+    <div class="pdf-flipbook-status pdf-flipbook-status-error" i18n>
+      Unable to load PDF flipbook.
+    </div>
+  }
+
+  @if (ready() && !error()) {
+    <div
+      class="pdf-flipbook-toolbar"
+      role="toolbar"
+      aria-label="PDF flipbook controls"
+      i18n-aria-label
+    >
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Previous page"
+        i18n-title
+        (click)="previousPage()"
+      >
+        <i-bs name="chevron-left"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Next page"
+        i18n-title
+        (click)="nextPage()"
+      >
+        <i-bs name="chevron-right"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Zoom in"
+        i18n-title
+        (click)="zoomIn()"
+      >
+        <i-bs name="zoom-in"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Zoom out"
+        i18n-title
+        (click)="zoomOut()"
+      >
+        <i-bs name="zoom-out"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Full screen"
+        i18n-title
+        (click)="toggleFullscreen()"
+      >
+        <i-bs name="fullscreen"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Download"
+        i18n-title
+        (click)="download()"
+      >
+        <i-bs name="download"></i-bs>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-dark"
+        title="Print"
+        i18n-title
+        (click)="print()"
+      >
+        <i-bs name="printer"></i-bs>
+      </button>
+    </div>
+  }
+</div>
